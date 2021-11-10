@@ -11,11 +11,12 @@ from tensorflow.keras.utils import plot_model
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
-from random import randrange
+from random import randrange, shuffle
 import subprocess
 import datetime
 import os
 from math import tanh, log
+from copy import deepcopy
 
 inf = 10000000.0
 
@@ -24,7 +25,7 @@ stone_end =  30
 
 min_n_stones = 4 + stone_strt
 max_n_stones = 4 + stone_end
-game_num = 10000 #126000
+game_num = 126000
 test_ratio = 0.1
 n_epochs = 200
 one_board_num = 1
@@ -154,20 +155,34 @@ def collect_data(num):
     except:
         print('cannot open')
         return
-    for datum in data:
+    for _ in range(10000):
+        datum = data[randrange(len(data))]
         board, player, v1, v2, v3, score = datum.split()
         v1 = float(v1)
+        v2 = float(v2)
+        v3 = float(v3)
         if min_n_stones <= calc_n_stones(board) < max_n_stones:
             score = float(score)
-            score = tanh(score / 20)
-            #score = score / 64
+            #score = tanh(score / 20)
+            score = score / 64
             for i in range(len(pattern_idx)):
                 lines = make_lines(board, pattern_idx[i])
                 for line in lines:
                     all_data[i].append(line)
-            additional_data.append(v1 / 30)
+            '''
+            if v1 >= 0:
+                additional_data.append([v1 / 30.0, 0.0])
+            else:
+                additional_data.append([0.0, -v1 / 30.0])
+            '''
+            #additional_data.append([v1 / 30, v2 / 30, v3 / 30])
+            #additional_data.append(v1 / 30.0)
+            additional_data.append([v1 / 30.0, v2 / 30, v3 / 30])
             for _ in range(one_board_num):
                 all_labels.append(score)
+
+def my_loss(y_true, y_pred):
+    return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
 
 x = [None for _ in range(len(pattern_idx))]
 ys = []
@@ -181,24 +196,42 @@ for i in range(len(pattern_idx)):
     y = Dense(1, name=names[i] + '_out')(y)
     ys.append(y)
 y_pattern = Add()(ys)
-y_pattern = Activation('tanh')(y_pattern)
-x.append(Input(shape=(1), name='additional_input'))
+y_all = y_pattern
+#y_pattern = Activation('tanh')(y_pattern)
+x.append(Input(shape=(3), name='additional_input'))
 x_all = Concatenate(axis=-1)([y_pattern, x[len(pattern_idx)]])
-y_all = Dense(4, name='add_dense0')(x_all)
+y_all = Dense(16, name='add_dense0')(x_all)
 y_all = LeakyReLU(alpha=0.01)(y_all)
 y_all = Dense(1, name='add_dense1')(y_all)
+#y_all = Activation('tanh')(y_all)
 
 model = Model(inputs=x, outputs=y_all)
 
 model.summary()
 plot_model(model, to_file='model.png', show_shapes=True)
 
+#model.compile(loss='mse', metrics='mae', optimizer='adam')
+model.compile(loss=my_loss, metrics='mae', optimizer='adam')
+
 for i in trange((game_num + 999) // 1000):
     collect_data(i)
 len_data = len(all_labels)
 print(len_data)
+
+all_data.append(additional_data)
+
+tmp_data = deepcopy(all_data)
+tmp_labels = deepcopy(all_labels)
+all_data = [[] for _ in range(len(tmp_data))]
+all_labels = []
+shuffled = list(range(len_data))
+shuffle(shuffled)
+for i in shuffled:
+    all_labels.append(tmp_labels[i])
+    for j in range(len(tmp_data)):
+        all_data[j].append(tmp_data[j][i])
+
 all_data = [np.array(arr) for arr in all_data]
-all_data.append(np.array(additional_data))
 all_labels = np.array(all_labels)
 
 n_train_data = int(len_data * (1.0 - test_ratio))
@@ -209,7 +242,7 @@ train_labels = all_labels[0:n_train_data]
 test_data = [arr[n_train_data:len_data] for arr in all_data]
 test_labels = all_labels[n_train_data:len_data]
 
-model.compile(loss='mse', metrics='mae', optimizer='adam')
+
 print(model.evaluate(test_data, test_labels))
 early_stop = EarlyStopping(monitor='val_loss', patience=5)
 model_checkpoint = ModelCheckpoint(filepath=os.path.join('learned_data/' + str(stone_strt) + '_' + str(stone_end), 'model_{epoch:02d}_{val_loss:.5f}_{val_mae:.5f}.h5'), monitor='val_loss', verbose=1)

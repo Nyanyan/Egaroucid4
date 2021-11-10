@@ -26,7 +26,10 @@ def get_layer_index(model, layer_name, not_found=None):
             return i
     return not_found
 
-model = load_model('learned_data/' + sys.argv[1])
+def my_loss(y_true, y_pred):
+    return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
+
+model = load_model('learned_data/' + sys.argv[1], custom_objects={'my_loss': my_loss})
 
 layer_names = ['line2', 'line3', 'line4', 'diagonal5', 'diagonal6', 'diagonal7', 'diagonal8', 'edge2X', 'triangle', 'edgeblock', 'cross']
 names = []

@@ -11,11 +11,20 @@ from tensorflow.keras.utils import plot_model
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
-from random import randrange
+from random import random, randrange
 import subprocess
 import datetime
 import os
 from math import tanh, log
+
+inf = 10000000.0
+
+stone_strt = 20
+stone_end =  30
+
+min_n_stones = 4 + stone_strt
+max_n_stones = 4 + stone_end
+one_board_num = 1
 
 
 line2_idx = [[8, 9, 10, 11, 12, 13, 14, 15], [1, 9, 17, 25, 33, 41, 49, 57], [6, 14, 22, 30, 38, 46, 54, 62], [48, 49, 50, 51, 52, 53, 54, 55]] # line2
@@ -98,7 +107,6 @@ pattern_idx = [line2_idx, line3_idx, line4_idx, diagonal5_idx, diagonal6_idx, di
 all_data = [[] for _ in range(len(pattern_idx))]
 additional_data = []
 all_labels = []
-all_raw_data = []
 
 def calc_idx(board, patterns):
     res = []
@@ -112,7 +120,8 @@ def calc_idx(board, patterns):
 
 def make_lines(board, patterns):
     res = []
-    for pattern in patterns:
+    for _ in range(one_board_num):
+        pattern = patterns[randrange(0, 8)]
         tmp = []
         for elem in pattern:
             tmp.append(1.0 if board[elem] == '0' else 0.0)
@@ -134,48 +143,57 @@ def calc_n_stones(board):
         res += int(elem != '.')
     return res
 
-'''
-# player = 0 ans = 22
-board = '011111110.1110100011001000101010000000100001101000.11110..1..110'
-v2 = 19
-v3 = 19
-'''
-# player = 1 ans = 4
-board = '..0000001111110011110000101110011100100.100001101.0111111011111.'
-v2 = 11
-v3 = 28
-
-for i in range(len(pattern_idx)):
-    lines = make_lines(board, pattern_idx[i])
-    for line in lines:
-        all_data[i].append(line)
-for _ in range(8):
-    additional_data.append([v2 / 30, v3 / 30])
-all_raw_data.append(board)
+def collect_data(num):
+    global all_data, all_labels
+    try:
+        with open('data/' + digit(num, 7) + '.txt', 'r') as f:
+            data = list(f.read().splitlines())
+    except:
+        print('cannot open')
+        return
+    for _ in range(10000):
+        datum = data[randrange(len(data))]
+        board, player, v1, v2, v3, score = datum.split()
+        v1 = float(v1)
+        v2 = float(v2)
+        v3 = float(v3)
+        if min_n_stones <= calc_n_stones(board) < max_n_stones:
+            score = float(score)
+            #score = tanh(score / 20)
+            score = score / 64
+            for i in range(len(pattern_idx)):
+                lines = make_lines(board, pattern_idx[i])
+                for line in lines:
+                    all_data[i].append(line)
+            additional_data.append([v1 / 30, v2 / 30, v3 / 30])
+            for _ in range(one_board_num):
+                all_labels.append(score)
 
 def my_loss(y_true, y_pred):
     return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
 
-model = load_model('learned_data/50_60.h5', custom_objects={'my_loss': my_loss})
-pattern_out = Model(inputs=model.input, outputs=model.get_layer('add').output)
+model = load_model('learned_data/' + str(stone_strt) + '_' + str(stone_end) + '.h5', custom_objects={'my_loss': my_loss})
+#model = load_model('learned_data/20_60.h5', custom_objects={'my_loss': my_loss})
 
-#model.summary()
-#plot_model(model, to_file='model.png', show_shapes=True)
-
+for i in trange(100):
+    collect_data(i)
 len_data = len(all_labels)
-print(len_data)
+print(len_data, len(all_data[0]))
 all_data = [np.array(arr) for arr in all_data]
 all_data.append(np.array(additional_data))
-all_labels = np.array(all_labels)
 
-idx = 0
-
-print(all_raw_data[idx])
-in_data = [np.array([all_data[i][idx]]) for i in range(len(all_data))]
-print(in_data)
 prediction = model.predict(all_data)
-print(prediction)
-print(sum(prediction[i][0] for i in range(len(all_data[0]))) * 640 / len(all_data[0]))
-prediction = pattern_out.predict(all_data)
-print(prediction)
-print(sum(prediction[i][0] for i in range(len(all_data[0]))) / len(all_data[0]))
+
+x = []
+y = []
+mae = 0
+for i in range(len(all_labels)):
+    x.append(all_labels[i] * 64.0 + random() * 0.8 - 0.4)
+    #print(all_labels[i] * 64.0, prediction[i][0] * 64.0)
+    y.append(abs(all_labels[i] * 64.0 - prediction[i][0] * 64.0))
+    mae += abs(all_labels[i] * 64.0 - prediction[i][0] * 64.0)
+mae /= len(all_labels)
+print(mae)
+
+plt.scatter(x, y, s=0.1)
+plt.show()
