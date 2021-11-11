@@ -5,3 +5,4 @@ evaluation/ai.out
 evaluation/learned_data
 evaluation/mpc.out
 evaluation/final_read.out
+evaluation/__pycache__
