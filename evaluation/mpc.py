@@ -1,10 +1,10 @@
-from random import randint
+from random import randint, randrange
 import subprocess
 from tqdm import trange
 from time import sleep, time
-import statistics
 from math import exp
 from random import random
+import statistics
 
 inf = 10000000.0
 
@@ -41,23 +41,23 @@ def collect_data(num):
     except:
         print('cannot open')
         return
-    for datum, _ in zip(data[:1000], trange(len(data[:1000]))):
+    for _ in trange(5000):
+        datum = data[randrange(0, len(data))]
         board, player, _, _, _, _ = datum.split()
         n_stones = calc_n_stones(board)
-        if min_n_stones <= n_stones:
-            depth = randint(3, 10)
-            board_proc = player + '\n' + str(depth // 4) + '\n' + str(int(depth)) + '\n'
-            for i in range(hw):
-                for j in range(hw):
-                    board_proc += board[i * hw + j]
-                board_proc += '\n'
-            #print(board_proc)
-            evaluate.stdin.write(board_proc.encode('utf-8'))
-            evaluate.stdin.flush()
-            vd, vh = [float(i) for i in evaluate.stdout.readline().decode().strip().split()]
-            #print(score)
-            vhs[(n_stones - 4) // 10].append(vh)
-            vds[(n_stones - 4) // 10].append(vd)
+        depth = randint(3, 10)
+        board_proc = player + '\n' + str(depth // 4) + '\n' + str(int(depth)) + '\n'
+        for i in range(hw):
+            for j in range(hw):
+                board_proc += board[i * hw + j]
+            board_proc += '\n'
+        #print(board_proc)
+        evaluate.stdin.write(board_proc.encode('utf-8'))
+        evaluate.stdin.flush()
+        vd, vh = [float(i) for i in evaluate.stdout.readline().decode().strip().split()]
+        #print(score)
+        vhs[(n_stones - 4) // 10].append(vh)
+        vds[(n_stones - 4) // 10].append(vd)
 
 for i in range(1):
     collect_data(i)
@@ -114,7 +114,7 @@ while time() - strt < tl:
 
 print(f_score)
 '''
-vh_vd = [[vhs[j][i] - (a * vds[j][i] + b) for i in range(len(vhs[j]))] for j in range(1, 6)]
-sd = [statistics.stdev(vh_vd[j]) for j in range(5)]
+vh_vd = [[vhs[j][i] - (a * vds[j][i] + b) for i in range(len(vhs[j]))] for j in range(6)]
+sd = [statistics.stdev(vh_vd[j]) for j in range(6)]
 print(a, b, sd)
 evaluate.kill()

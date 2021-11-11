@@ -19,8 +19,8 @@ from math import tanh, log
 
 inf = 10000000.0
 
-stone_strt = 20
-stone_end =  30
+stone_strt = 50
+stone_end =  60
 
 min_n_stones = 4 + stone_strt
 max_n_stones = 4 + stone_end
@@ -151,7 +151,7 @@ def collect_data(num):
     except:
         print('cannot open')
         return
-    for _ in range(10000):
+    for _ in range(1000):
         datum = data[randrange(len(data))]
         board, player, v1, v2, v3, score = datum.split()
         v1 = float(v1)

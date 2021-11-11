@@ -134,30 +134,33 @@ def calc_n_stones(board):
         res += int(elem != '.')
     return res
 
+
 '''
-# player = 0 ans = 22
-board = '011111110.1110100011001000101010000000100001101000.11110..1..110'
-v2 = 19
-v3 = 19
+# player = 0 ans = -6
+board = '..00001.0.0001.100001011000100010010110101010011011110.1010000..'
+v1 = 9
+v2 = 27
+v3 = 16
 '''
-# player = 1 ans = 4
-board = '..0000001111110011110000101110011100100.100001101.0111111011111.'
-v2 = 11
-v3 = 28
+# player = 1 ans = 12
+board = '..111111..110001.1101001000110010011110101000001.1101001.0000000'
+v1 = -13
+v2 = 17
+v3 = 16
 
 for i in range(len(pattern_idx)):
     lines = make_lines(board, pattern_idx[i])
     for line in lines:
         all_data[i].append(line)
 for _ in range(8):
-    additional_data.append([v2 / 30, v3 / 30])
+    additional_data.append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
 all_raw_data.append(board)
 
 def my_loss(y_true, y_pred):
     return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
 
 model = load_model('learned_data/50_60.h5', custom_objects={'my_loss': my_loss})
-pattern_out = Model(inputs=model.input, outputs=model.get_layer('add').output)
+pattern_out = Model(inputs=model.input, outputs=model.get_layer('concatenate_1').output)
 
 #model.summary()
 #plot_model(model, to_file='model.png', show_shapes=True)
@@ -175,7 +178,14 @@ in_data = [np.array([all_data[i][idx]]) for i in range(len(all_data))]
 print(in_data)
 prediction = model.predict(all_data)
 print(prediction)
-print(sum(prediction[i][0] for i in range(len(all_data[0]))) * 640 / len(all_data[0]))
+print(sum(prediction[i][0] for i in range(len(all_data[0]))) * 6400 / len(all_data[0]))
+
 prediction = pattern_out.predict(all_data)
 print(prediction)
-print(sum(prediction[i][0] for i in range(len(all_data[0]))) / len(all_data[0]))
+#print(sum(prediction[i][0] for i in range(len(all_data[0]))) / len(all_data[0]))
+#print(sum(prediction[i][0] for i in range(len(all_data[0]))))
+for i in range(16):
+    tmp = 0
+    for j in range(8):
+        tmp += prediction[j][i]
+    print(tmp / 8)
