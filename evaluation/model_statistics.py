@@ -190,10 +190,16 @@ mae = 0
 for i in range(len(all_labels)):
     x.append(all_labels[i] * 64.0 + random() * 0.8 - 0.4)
     #print(all_labels[i] * 64.0, prediction[i][0] * 64.0)
-    y.append(abs(all_labels[i] * 64.0 - prediction[i][0] * 64.0))
+    yy = abs(all_labels[i] * 64.0 - prediction[i][0] * 64.0)
+    if all_labels[i] * prediction[i][0] < 0:
+        yy = -yy
+    elif all_labels[i] == 0:
+        yy = prediction[i][0] * 64.0
+    y.append(yy)
     mae += abs(all_labels[i] * 64.0 - prediction[i][0] * 64.0)
 mae /= len(all_labels)
 print(mae)
 
 plt.scatter(x, y, s=0.1)
+#plt.plot(x, [0 for _ in x])
 plt.show()

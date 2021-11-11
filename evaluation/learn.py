@@ -182,7 +182,8 @@ def collect_data(num):
                 all_labels.append(score)
 
 def my_loss(y_true, y_pred):
-    return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
+    return tf.keras.backend.square(y_true - y_pred) / (1.1 + y_true * y_pred)
+    #return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
 
 x = [None for _ in range(len(pattern_idx))]
 ys = []

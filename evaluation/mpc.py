@@ -41,12 +41,12 @@ def collect_data(num):
     except:
         print('cannot open')
         return
-    for _ in trange(5000):
+    for _ in trange(1000):
         datum = data[randrange(0, len(data))]
         board, player, _, _, _, _ = datum.split()
         n_stones = calc_n_stones(board)
         depth = randint(3, 10)
-        board_proc = player + '\n' + str(depth // 4) + '\n' + str(int(depth)) + '\n'
+        board_proc = player + '\n' + str(depth // 2) + '\n' + str(int(depth)) + '\n'
         for i in range(hw):
             for j in range(hw):
                 board_proc += board[i * hw + j]
@@ -79,17 +79,17 @@ def prob(p_score, n_score, strt, now, tl):
 
 a = 1.0
 b = 0.0
-'''
+
 def scoring():
     dv = 0
-    for i in range(1, 6):
+    for i in range(6):
         dv += len(vhs[i])
     return sum([sum([(vhs[j][i] - (a * vds[j][i] + b)) ** 2 for i in range(len(vhs[j]))]) for j in range(1, 6)]) / dv
 
 f_score = scoring()
 print(f_score)
 
-tl = 60.0
+tl = 10.0
 strt = time()
 while time() - strt < tl:
     rnd = random()
@@ -113,7 +113,7 @@ while time() - strt < tl:
             b = fb
 
 print(f_score)
-'''
+
 vh_vd = [[vhs[j][i] - (a * vds[j][i] + b) for i in range(len(vhs[j]))] for j in range(6)]
 sd = [statistics.stdev(vh_vd[j]) for j in range(6)]
 print(a, b, sd)
