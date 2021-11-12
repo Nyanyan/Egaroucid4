@@ -1,22 +1,11 @@
 from tqdm import trange
+import subprocess
 
 hw = 8
 hw2 = 64
 board_index_num = 38
 dy = [0, 1, 0, -1, 1, 1, -1, -1]
 dx = [1, 0, -1, 0, 1, -1, 1, -1]
-
-all_chars = [
-    '!', '#', '$', '&', "'", '(', ')', '*', 
-    '+', ',', '-', '.', '/', '0', '1', '2', 
-    '3', '4', '5', '6', '7', '8', '9', ':', 
-    ';', '<', '=', '>', '?', '@', 'A', 'B', 
-    'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
-    'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 
-    'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
-    '[', ']', '^', '_', '`', 'a', 'b', 'c', 
-    'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~']
-
 
 def digit(n, r):
     n = str(n)
@@ -167,34 +156,67 @@ class reversi:
             #print('Draw!', self.nums[0], '-', self.nums[1])
             return -1
 
-def get_diff(p, n):
-    for i in range(64):
-        if p[i] == '.' and n[i] != '.':
-            return all_chars[i] #chr(i % hw + ord('a')) + str(i // hw + 1) #
-    return -1
+evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+ai2 = subprocess.Popen('./ai2.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
-def collect_data(num, boards):
-    records = []
-    prev = ''
-    for idx in trange(len(boards)):
-        if boards[idx][0] == '...........................10......01...........................':
-            if idx > 0:
-                records[-1] += ' ' + str(boards[idx - 1][5])
-            records.append('')
+def collect_data(num, s):
+    global dict_data
+    grids = []
+    rv = reversi()
+    idx = 0
+    turn = 0
+    while True:
+        if idx >= len(s):
+            return
+        if rv.check_pass() and rv.check_pass():
+            break
+        grid_str = ''
+        for i in range(hw):
+            for j in range(hw):
+                grid_str += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
+            grid_str += '\n'
+        evaluate.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
+        evaluate.stdin.flush()
+        add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
+        grids.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
+        if turn < 30:
+            x = ord(s[idx]) - ord('a')
+            y = int(s[idx + 1]) - 1
+            idx += 2
         else:
-            policy = get_diff(prev, boards[idx][0])
-            records[-1] += boards[idx - 1][1] + policy
-        prev = boards[idx][0]
-    records[-1] += ' ' + str(boards[len(boards) - 1][5])
+            ai2.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
+            ai2.stdin.flush()
+            y, x = [int(elem) for elem in ai2.stdout.readline().decode().replace('\r\n', '').split()]
+        if rv.move(y, x):
+            print('error')
+            exit()
+        turn += 1
+        if rv.end():
+            break
+    rv.check_pass()
+    #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
+    result = rv.nums[0] - rv.nums[1]
+    score = 1 if result > 0 else -1 if result < 0 else 0
     with open('data/' + digit(num, 7) + '.txt', 'a') as f:
-        for record in records:
-            f.write(record + '\n')
+        for grid in grids:
+            f.write(grid + ' ' + str(result) + '\n')
 
-
+game_strt = 2008
+game_end = 2009
+write_strt = 4378 + 4462 + 3743 + 4604 + 4063
+# done
 games = []
-
-for idx in range(127): #range(1111111, 1111112):
+for year in reversed(range(game_strt, game_end + 1)):
     raw_data = ''
-    with open('third_party/boards/' + digit(idx, 7) + '.txt', 'r') as f:
+    with open('third_party/records/' + str(year) + '.csv', 'r', encoding='utf-8-sig') as f:
         raw_data = f.read()
-    collect_data(idx, [list(i.split()) for i in raw_data.splitlines()])
+    games.extend([i for i in raw_data.splitlines()])
+print(len(games))
+dict_data = {}
+idx = 0
+for i in trange(len(games)):
+    if len(games[i]) == 0:
+        continue
+    collect_data((write_strt + idx) // 1000, games[i])
+    idx += 1
+print(idx)

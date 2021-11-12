@@ -575,7 +575,7 @@ inline void pre_evaluation(int phase_idx, int evaluate_idx, int pattern_size, do
 }
 
 inline void init_evaluation(){
-    ifstream ifs("evaluation/param/param.txt");
+    ifstream ifs("param/param.txt");
     if (ifs.fail()){
         cerr << "evaluation file not exist" << endl;
         exit(1);
@@ -1415,7 +1415,6 @@ inline double calc_result_value(int v){
 int main(){
     int policy, n_stones, ai_player;
     board b;
-    cin >> ai_player;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
@@ -1427,24 +1426,15 @@ int main(){
     init_included();
     init_pop_digit();
     init_mpc();
-    init_book();
+    //init_book();
     cerr << "book initialized in " << tim() - strt << " ms" << endl;
     init_evaluation();
     f_search_table_idx = 0;
     search_hash_table_init(f_search_table_idx);
     search_hash_table_init(1 - f_search_table_idx);
     cerr << "iniitialized in " << tim() - strt << " ms" << endl;
-    if (ai_player == 0){
-        string raw_board;
-        for (int i = 0; i < hw; ++i){
-            cin >> raw_board; cin.ignore();
-        }
-        policy = 37;
-        cerr << "FIRST MOVE" << endl;
-        cerr << "book policy " << policy << endl;
-        cout << policy / hw << " " << policy % hw << " 0" << endl;
-    }
     while (true){
+        cin >> ai_player;
         n_stones = input_board(b.b);
         strt = tim();
         cerr << "n_stones: " << n_stones << endl;
@@ -1452,20 +1442,8 @@ int main(){
         b.n = n_stones;
         b.p = ai_player;
         cerr << "value: " << evaluate(&b) << endl;
-        //continue;
-        if (n_stones < book_stones){
-            policy = get_book(b.b);
-            cerr << "book policy " << policy << endl;
-            if (policy != -1){
-                b = move(&b, policy);
-                ++n_stones;
-                result = search(b, strt);
-                cout << policy / hw << " " << policy % hw << " " << calc_result_value(-result.value) << endl;
-                continue;
-            }
-        }
         result = search(b, strt);
-        cout << result.policy / hw << " " << result.policy % hw << " " << calc_result_value(result.value) << endl;
+        cout << result.policy / hw << " " << result.policy % hw << endl;
     }
     return 0;
 }

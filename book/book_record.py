@@ -75,7 +75,7 @@ for i in trange(127):
     try:
         with open('data/' + digit(i, 7) + '.txt', 'r') as f:
             records = f.read().splitlines()
-        for datum in records[:-1]:
+        for datum in records:
             record, score = datum.split()
             score = int(score)
             if score == 0:
@@ -142,8 +142,6 @@ def create_book(record):
         r = record + all_chars[i]
         if r in record_all:
             val = calc_value(r)
-            if translate(record) in {'F5F6E6D6C5E3'}:
-                print(translate(r), val)
             if max_val < val:
                 max_val = val
                 policy = i
