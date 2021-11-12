@@ -16,8 +16,7 @@
 
 using namespace std;
 
-#define tl 145
-#define final_tl 100
+#define tl 500
 
 #define hw 8
 #define hw_m1 7
@@ -51,7 +50,7 @@ using namespace std;
 #define n_dense1 16
 #define n_all_input 14
 
-#define win_read_depth 18
+#define win_read_depth 22
 
 struct board{
     int b[b_idx_num];
@@ -699,13 +698,16 @@ inline int end_game(const board *b){
     int count = 0;
     for (int idx = 0; idx < hw; ++idx)
         count += count_arr[b->b[idx]];
+    int vacant = hw2;
+    for (int idx = 0; idx < hw; ++idx)
+        vacant -= count_all_arr[b->b[idx]];
     if (b->p == 1)
         count = -count;
-    if (count > 0)
-        return sc_w;
-    else if (count == 0)
-        return 0;
-    return -sc_w;
+    if (count < 0)
+        count -= vacant;
+    else if (count > 0)
+        count += vacant;
+    return count * sc_w / hw2;
 }
 
 inline int calc_canput_exact(const board *b){
@@ -955,12 +957,7 @@ inline int last1(const board *b, bool skipped, int p0){
         rb.n = b->n;
         return -last1(&rb, true, p0);
     }
-    //return score * sc_w / hw2;
-    if (score > 0)
-        return sc_w;
-    else if (score == 0)
-        return 0;
-    return -sc_w;
+    return score * sc_w / hw2;
 }
 
 inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int p1){
@@ -1055,111 +1052,21 @@ inline void pick_vacant(const board *b, int cells[]){
     }
 }
 
-int nega_alpha_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
-    if (b->n >= hw2 - 3){
-        int cells[3];
-        pick_vacant(b, cells);
-        if (b->n == hw2 - 3)
-            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
-        if (b->n == hw2 - 2)
-            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
-        if (b->n == hw2 - 1)
-            return last1(b, skipped, cells[0]);
-        return end_game(b);
-    }
-    ++searched_nodes;
-    board nb;
-    bool passed = true;
-    for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
-                    passed = false;
-                    nb = move(b, cell);
-                    alpha = max(alpha, -nega_alpha_final(&nb, strt, false, depth - 1, -beta, -alpha));
-                    if (beta <= alpha)
-                        return alpha;
-                    break;
-                }
-            }
-        }
-    }
-    if (passed){
-        if (skipped)
-            return end_game(b);
-        board rb;
-        for (int i = 0; i < b_idx_num; ++i)
-            rb.b[i] = b->b[i];
-        rb.p = 1 - b->p;
-        rb.n = b->n;
-        return -nega_alpha_final(&rb, strt, true, depth, -beta, -alpha);
-    }
-    return alpha;
-}
-
-int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
-    if (tim() - strt > final_tl)
-        return -inf;
-    if (b->n >= hw2 - 3){
-        int cells[3];
-        pick_vacant(b, cells);
-        if (b->n == hw2 - 3)
-            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
-        if (b->n == hw2 - 2)
-            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
-        if (b->n == hw2 - 1)
-            return last1(b, skipped, cells[0]);
-        return end_game(b);
-    }
-    if (depth <= 4)
-        return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
-    ++searched_nodes;
-    vector<board> nb;
-    int canput = 0;
-    for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
-                    nb.push_back(move(b, cell));
-                    nb[canput].v = -calc_canput_exact(&nb[canput]);
-                    ++canput;
-                    break;
-                }
-            }
-        }
-    }
-    if (canput == 0){
-        if (skipped)
-            return end_game(b);
-        board rb;
-        for (int i = 0; i < b_idx_num; ++i)
-            rb.b[i] = b->b[i];
-        rb.p = 1 - b->p;
-        rb.n = b->n;
-        return -nega_alpha_ordering_final(&rb, strt, true, depth, -beta, -alpha);
-    }
-    if (canput >= 2)
-        sort(nb.begin(), nb.end());
-    int g;
-    for (int i = 0; i < canput; ++i){
-        g = -nega_alpha_ordering_final(&nb[i], strt, false, depth - 1, -beta, -alpha);
-        if (g == inf)
-            return -inf;
-        alpha = max(alpha, g);
-        if (beta <= alpha)
-            return alpha;
-    }
-    return alpha;
-}
-
 int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (depth == 0){
-        if (b->n < hw2)
-            return evaluate(b);
-        else
-            return end_game(b);
+    if (b->n >= hw2 - 3){
+        int cells[3];
+        pick_vacant(b, cells);
+        if (b->n == hw2 - 3)
+            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
+        if (b->n == hw2 - 2)
+            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
+        if (b->n == hw2 - 1)
+            return last1(b, skipped, cells[0]);
+        return end_game(b);
     }
+    if (depth == 0)
+        return evaluate(b);
     board nb;
     bool passed = true;
     int g, v = -inf;
@@ -1196,11 +1103,16 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
     if (tim() - strt > tl)
         return -inf;
     ++searched_nodes;
-    if (depth == 0){
-        if (b->n < hw2)
-            return evaluate(b);
-        else
-            return end_game(b);
+    if (b->n >= hw2 - 3){
+        int cells[3];
+        pick_vacant(b, cells);
+        if (b->n == hw2 - 3)
+            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
+        if (b->n == hw2 - 2)
+            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
+        if (b->n == hw2 - 1)
+            return last1(b, skipped, cells[0]);
+        return end_game(b);
     }
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
@@ -1273,11 +1185,16 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
     if (tim() - strt > tl)
         return -inf;
     ++searched_nodes;
-    if (depth == 0){
-        if (b->n < hw2)
-            return evaluate(b);
-        else
-            return end_game(b);
+    if (b->n >= hw2 - 3){
+        int cells[3];
+        pick_vacant(b, cells);
+        if (b->n == hw2 - 3)
+            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
+        if (b->n == hw2 - 2)
+            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
+        if (b->n == hw2 - 1)
+            return last1(b, skipped, cells[0]);
+        return end_game(b);
     }
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
@@ -1452,67 +1369,15 @@ inline search_result search(const board b, long long strt){
             cerr << "depth: " << depth + 1 << " time: " << tim() - strt << " policy: " << policy << " value: " << alpha << " nodes: " << searched_nodes << " nps: " << (long long)searched_nodes * 1000 / max(1LL, tim() - strt) << endl;
             ++depth;
         }
-        if (depth + 1 >= hw2 - b.n)
+        if (b.n + depth > hw2){
+            cerr << "game end" << endl;
             break;
+        }
     }
     search_result res;
     res.policy = policy;
     res.value = value;
     res.depth = res_depth;
-    return res;
-}
-
-inline search_result win_read(const board b, long long strt){
-    vector<board> nb;
-    for (const int &cell: vacant_lst){
-        for (const int &idx: place_included[cell]){
-            if (move_arr[b.p][b.b[idx]][local_place[idx][cell]][0] || move_arr[b.p][b.b[idx]][local_place[idx][cell]][1]){
-                cerr << cell << " ";
-                nb.push_back(move(&b, cell));
-                break;
-            }
-        }
-    }
-    cerr << endl;
-    int canput = nb.size();
-    cerr << "canput: " << canput << endl;
-    int depth;
-    int tmp_policy, i;
-    int alpha, beta, g;
-    searched_nodes = 0;
-    bool timeout_flag = false;
-    search_result res;
-    depth = hw2_m1 - b.n;
-    alpha = -sc_w;
-    beta = sc_w;
-    for (i = 0; i < canput; ++i)
-        nb[i].v = -calc_canput_exact(&nb[i]);
-    if (canput >= 2)
-        sort(nb.begin(), nb.end());
-    for (i = 0; i < canput; ++i){
-        g = -nega_alpha_ordering_final(&nb[i], strt, 0, depth, -beta, -alpha);
-        if (g == inf){
-            timeout_flag = true;
-            break;
-        }
-        if (alpha < g || i == 0){
-            alpha = g;
-            tmp_policy = nb[i].policy;
-        }
-        if (alpha >= sc_w)
-            break;
-    }
-    if (timeout_flag){
-        cerr << "win read timeout" << endl;
-        res.policy = -1;
-        res.value = -inf;
-        res.depth = depth + 1;
-    } else{
-        cerr << "win read depth: " << depth + 1 << " time: " << tim() - strt << " policy: " << tmp_policy << " value: " << alpha << " nodes: " << searched_nodes << " nps: " << (long long)searched_nodes * 1000 / max(1LL, tim() - strt) << endl;
-        res.policy = tmp_policy;
-        res.value = alpha;
-        res.depth = depth + 1;
-    }
     return res;
 }
 
@@ -1564,7 +1429,7 @@ int main(){
     board b;
     cin >> ai_player;
     long long strt = tim();
-    search_result result, result_win;
+    search_result result;
     cerr << "initializing" << endl;
     init_pow();
     init_mod3();
@@ -1608,20 +1473,6 @@ int main(){
                 ++n_stones;
                 result = search(b, strt);
                 cout << policy / hw << " " << policy % hw << " " << calc_result_value(-result.value) << endl;
-                continue;
-            }
-        }
-        if (n_stones >= hw2 - win_read_depth){
-            result_win = win_read(b, strt);
-            if (result_win.value == sc_w){
-                cout << result_win.policy / hw << " " << result_win.policy % hw << " " << 64 << endl;
-                continue;
-            } else if (result_win.value == 0){
-                cout << result_win.policy / hw << " " << result_win.policy % hw << " " << 0 << endl;
-                continue;
-            } else if (result_win.value == -sc_w){
-                result = search(b, strt);
-                cout << result.policy / hw << " " << result.policy % hw << " " << calc_result_value(result.value) << endl;
                 continue;
             }
         }
