@@ -698,15 +698,8 @@ inline int end_game(const board *b){
     int count = 0;
     for (int idx = 0; idx < hw; ++idx)
         count += count_arr[b->b[idx]];
-    int vacant = hw2;
-    for (int idx = 0; idx < hw; ++idx)
-        vacant -= count_all_arr[b->b[idx]];
     if (b->p == 1)
         count = -count;
-    if (count < 0)
-        count -= vacant;
-    else if (count > 0)
-        count += vacant;
     return count * sc_w / hw2;
 }
 
@@ -908,7 +901,7 @@ inline int evaluate(const board *b){
         res += in_arr[i] * all_dense[phase_idx][i];
     if (b->p)
         res = -res;
-    return (int)(res * sc_w);
+    return (int)(max(-1.0, min(1.0, res)) * sc_w);
 }
 
 int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta);
@@ -1116,10 +1109,12 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
     }
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
-    if (mpc_higher(b, skipped, depth, beta))
-        return beta + epsilon;
-    if (mpc_lower(b, skipped, depth, alpha))
-        return alpha - epsilon;
+    if (b->n < hw2 - 16){
+        if (mpc_higher(b, skipped, depth, beta))
+            return beta + epsilon;
+        if (mpc_lower(b, skipped, depth, alpha))
+            return alpha - epsilon;
+    }
     int hash = (int)(calc_hash(b->b) & search_hash_mask);
     int l, u;
     get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
