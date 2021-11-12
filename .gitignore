@@ -6,3 +6,6 @@ evaluation/learned_data
 evaluation/mpc.out
 evaluation/final_read.out
 evaluation/__pycache__
+book/third_party
+book/learned_data
+book/data
