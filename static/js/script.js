@@ -45,8 +45,8 @@ var graph = new Chart(ctx, {
         scales: {
             yAxes: [{
             ticks: {
-                suggestedMax: 65.0,
-                suggestedMin: -65.0,
+                suggestedMax: 5.0,
+                suggestedMin: -5.0,
                 stepSize: 5.0,
                 callback: function(value, index, values){
                     return  value
