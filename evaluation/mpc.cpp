@@ -49,8 +49,8 @@ using namespace std;
 
 #define n_phases 4
 #define n_patterns 11
-#define n_dense0 16
-#define n_dense1 16
+#define n_dense0 10
+#define n_dense1 8
 #define n_all_input 14
 
 #define win_read_depth 18

@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define tl 400
+#define tl 600
 
 #define hw 8
 #define hw_m1 7

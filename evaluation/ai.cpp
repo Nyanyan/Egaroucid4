@@ -164,7 +164,6 @@ inline int move_line_half(const int p, const int o, const int place, const int k
 
 inline void init_move(){
     int idx, b, w, place;
-    bool surround_flag;
     for (idx = 0; idx < n_line; ++idx){
         b = create_one_color(idx, 0);
         w = create_one_color(idx, 1);
@@ -187,19 +186,22 @@ inline void init_move(){
                 reverse_board[idx] += 1;
             else
                 reverse_board[idx] += 2;
-            surround_flag = false;
             if (place > 0){
-                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
             if (place < hw_m1){
-                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
-            if (1 & (b >> place) && surround_flag)
-                ++surround_arr[0][idx];
-            else if (1 & (w >> place) && surround_flag)
-                ++surround_arr[1][idx];
         }
         for (place = 0; place < hw; ++place){
             move_arr[0][idx][place][0] = move_line_half(b, w, place, 0);
@@ -335,10 +337,45 @@ inline int input_board(int (&board)[b_idx_num]){
     return n_stones;
 }
 
+inline int canput_fill(int idx, int b){
+    if (idx == 16 || idx == 26 || idx == 27 || idx == 37){
+        return b - pow3[5] + 1;
+    } else if (idx == 17 || idx == 25 || idx == 28 || idx == 36){
+        return b - pow3[4] + 1;
+    } else if (idx == 18 || idx == 24 || idx == 29 || idx == 35){
+        return b - pow3[3] + 1;
+    } else if (idx == 19 || idx == 23 || idx == 30 || idx == 34){
+        return b - pow3[2] + 1;
+    } else if (idx == 20 || idx == 22 || idx == 31 || idx == 33){
+        return b - pow3[1] + 1;
+    }
+    return b;
+}
+
+inline int surround_fill(int idx, int b){
+    if (idx == 16 || idx == 26 || idx == 27 || idx == 37){
+        if (pop_digit[b][2] != 2)
+            return b - pow3[5] + 1;
+    } else if (idx == 17 || idx == 25 || idx == 28 || idx == 36){
+        if (pop_digit[b][3] != 2)
+            return b - pow3[4] + 1;
+    } else if (idx == 18 || idx == 24 || idx == 29 || idx == 35){
+        if (pop_digit[b][4] != 2)
+            return b - pow3[3] + 1;
+    } else if (idx == 19 || idx == 23 || idx == 30 || idx == 34){
+        if (pop_digit[b][5] != 2)
+            return b - pow3[2] + 1;
+    } else if (idx == 20 || idx == 22 || idx == 31 || idx == 33){
+        if (pop_digit[b][6] != 2)
+            return b - pow3[1] + 1;
+    }
+    return b;
+}
+
 inline int calc_canput(const board *b){
     int res = 0;
     for (int i = 0; i < b_idx_num; ++i)
-        res += canput_arr[b->p][b->b[i]];
+        res += canput_arr[b->p][canput_fill(i, b->b[i])];
     if (b->p)
         res = -res;
     return res;
@@ -347,14 +384,14 @@ inline int calc_canput(const board *b){
 inline int calc_surround0(const board *b){
     int res = 0;
     for (int i = 0; i < b_idx_num; ++i)
-        res += surround_arr[0][b->b[i]];
+        res += surround_arr[0][surround_fill(i, b->b[i])];
     return res;
 }
 
 inline int calc_surround1(const board *b){
     int res = 0;
     for (int i = 0; i < b_idx_num; ++i)
-        res += surround_arr[1][b->b[i]];
+        res += surround_arr[1][surround_fill(i, b->b[i])];
     return res;
 }
 

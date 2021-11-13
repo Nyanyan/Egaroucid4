@@ -26,7 +26,7 @@ for stone_strt in [20, 30, 40, 50]:
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 126000
+    game_num = 26000 #126000
     test_ratio = 0.1
     n_epochs = 200
     one_board_num = 1
@@ -191,9 +191,9 @@ for stone_strt in [20, 30, 40, 50]:
     names = ['line2', 'line3', 'line4', 'diagonal5', 'diagonal6', 'diagonal7', 'diagonal8', 'edge2X', 'triangle', 'edgeblock', 'cross']
     for i in range(len(pattern_idx)):
         x[i] = Input(shape=(len(pattern_idx[i][0]) * 2), name=names[i] + '_in')
-        y = Dense(16, name=names[i] + '_dense0')(x[i])
+        y = Dense(10, name=names[i] + '_dense0')(x[i])
         y = LeakyReLU(alpha=0.01)(y)
-        y = Dense(16, name=names[i] + '_dense1')(y)
+        y = Dense(8, name=names[i] + '_dense1')(y)
         y = LeakyReLU(alpha=0.01)(y)
         y = Dense(1, name=names[i] + '_out')(y)
         y = LeakyReLU(alpha=0.01)(y)

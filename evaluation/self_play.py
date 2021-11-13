@@ -202,7 +202,7 @@ def collect_data(num, s):
             f.write(grid + ' ' + str(result) + '\n')
 
 game_strt = 2008
-game_end = 2009
+game_end =  2009
 write_strt = 4378 + 4462 + 3743 + 4604 + 4063
 # done
 games = []
@@ -220,3 +220,5 @@ for i in trange(len(games)):
     collect_data((write_strt + idx) // 1000, games[i])
     idx += 1
 print(idx)
+evaluate.kill()
+ai2.kill()
