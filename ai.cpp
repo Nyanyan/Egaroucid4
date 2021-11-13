@@ -229,7 +229,6 @@ inline void init_pow(){
 
 inline void init_move(){
     int idx, b, w, place;
-    bool surround_flag;
     for (idx = 0; idx < n_line; ++idx){
         b = create_one_color(idx, 0);
         w = create_one_color(idx, 1);
@@ -252,19 +251,22 @@ inline void init_move(){
                 reverse_board[idx] += 1;
             else
                 reverse_board[idx] += 2;
-            surround_flag = false;
             if (place > 0){
-                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
             if (place < hw_m1){
-                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
-            if (1 & (b >> place) && surround_flag)
-                ++surround_arr[0][idx];
-            else if (1 & (w >> place) && surround_flag)
-                ++surround_arr[1][idx];
         }
         for (place = 0; place < hw; ++place){
             move_arr[0][idx][place][0] = move_line_half(b, w, place, 0);
@@ -740,7 +742,7 @@ inline int calc_phase_idx(const board *b){
 
 inline void calc_pattern(const board *b, double arr[]){
     int idx, phase_idx = calc_phase_idx(b);
-    double line2 = 0, line3 = 0, line4 = 0, diagonal5 = 0, diagonal6 = 0, diagonal7 = 0, diagonal8 = 0, edge_2x = 0, triangle = 0, edge_block = 0, cross = 0;
+    double line2 = 0.0, line3 = 0.0, line4 = 0.0, diagonal5 = 0.0, diagonal6 = 0.0, diagonal7 = 0.0, diagonal8 = 0.0, edge_2x = 0.0, triangle = 0.0, edge_block = 0.0, cross = 0.0;
 
     line2 += pattern_arr[phase_idx][0][b->b[1]];
     line2 += pattern_arr[phase_idx][0][b->b[6]];

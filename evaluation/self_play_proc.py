@@ -12,8 +12,8 @@ evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=su
 
 hw = 8
 
-for idx in trange(26):
-    with open('data/half_self_play/' + digit(idx, 7) + '.txt', 'r') as f:
+for idx in trange(127):
+    with open('data/raw/' + digit(idx, 7) + '.txt', 'r') as f:
         data = [list(elem.split()) for elem in f.read().splitlines()]
     new_data = ''
     for board, player, _, _, _, result in data:

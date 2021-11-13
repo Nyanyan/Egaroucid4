@@ -21,7 +21,7 @@ from copy import deepcopy
 
 inf = 10000000.0
 
-for stone_strt in [20, 30, 40, 50]:
+for stone_strt in [30, 40, 50]:
     stone_end = stone_strt + 10
 
     min_n_stones = 4 + stone_strt
@@ -191,9 +191,9 @@ for stone_strt in [20, 30, 40, 50]:
     names = ['line2', 'line3', 'line4', 'diagonal5', 'diagonal6', 'diagonal7', 'diagonal8', 'edge2X', 'triangle', 'edgeblock', 'cross']
     for i in range(len(pattern_idx)):
         x[i] = Input(shape=(len(pattern_idx[i][0]) * 2), name=names[i] + '_in')
-        y = Dense(10, name=names[i] + '_dense0')(x[i])
+        y = Dense(16, name=names[i] + '_dense0')(x[i])
         y = LeakyReLU(alpha=0.01)(y)
-        y = Dense(8, name=names[i] + '_dense1')(y)
+        y = Dense(16, name=names[i] + '_dense1')(y)
         y = LeakyReLU(alpha=0.01)(y)
         y = Dense(1, name=names[i] + '_out')(y)
         y = LeakyReLU(alpha=0.01)(y)
@@ -211,8 +211,8 @@ for stone_strt in [20, 30, 40, 50]:
     model.summary()
     plot_model(model, to_file='model.png', show_shapes=True)
 
-    #model.compile(loss='mse', metrics='mae', optimizer='adam')
-    model.compile(loss=my_loss, metrics='mae', optimizer='adam')
+    model.compile(loss='mse', metrics='mae', optimizer='adam')
+    #model.compile(loss=my_loss, metrics='mae', optimizer='adam')
 
     for i in trange((game_num + 999) // 1000):
         collect_data(i)

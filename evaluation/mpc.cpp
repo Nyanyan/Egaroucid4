@@ -49,8 +49,8 @@ using namespace std;
 
 #define n_phases 4
 #define n_patterns 11
-#define n_dense0 10
-#define n_dense1 8
+#define n_dense0 16
+#define n_dense1 16
 #define n_all_input 14
 
 #define win_read_depth 18
@@ -124,7 +124,6 @@ search_node *search_replace_table[2][search_hash_table_size];
 long long searched_nodes;
 int f_search_table_idx;
 double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
-//int ev_arr[n_phases][resol_pattern][resol_surround][resol_surround];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
 
@@ -526,7 +525,7 @@ inline double leaky_relu(double x){
 }
 
 inline double predict(int pattern_size, double in_arr[], double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
-    double hidden0[16], hidden1[16];
+    double hidden0[16], hidden1;
     int i, j;
     for (i = 0; i < n_dense0; ++i){
         hidden0[i] = bias0[i];
@@ -534,22 +533,67 @@ inline double predict(int pattern_size, double in_arr[], double dense0[n_dense0]
             hidden0[i] += in_arr[j] * dense0[i][j];
         hidden0[i] = leaky_relu(hidden0[i]);
     }
-    for (i = 0; i < n_dense1; ++i){
-        hidden1[i] = bias1[i];
-        for (j = 0; j < n_dense0; ++j)
-            hidden1[i] += hidden0[j] * dense1[i][j];
-        hidden1[i] = leaky_relu(hidden1[i]);
-    }
     double res = bias2;
-    for (i = 0; i < n_dense1; ++i)
-        res += hidden1[i] * dense2[i];
+    for (i = 0; i < n_dense1; ++i){
+        hidden1 = bias1[i];
+        for (j = 0; j < n_dense0; ++j)
+            hidden1 += hidden0[j] * dense1[i][j];
+        hidden1 = leaky_relu(hidden1);
+        res += hidden1 * dense2[i];
+    }
     res = leaky_relu(res);
     return res;
 }
 
-inline void pre_evaluation(int phase_idx, int evaluate_idx, int pattern_size, double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
+inline int calc_pop(int a, int b, int s){
+    return (a / pow3[s - 1 - b]) % 3;
+}
+
+inline int calc_rev_idx(int pattern_idx, int pattern_size, int idx){
+    int res = 0;
+    if (pattern_idx <= 7){
+        for (int i = 0; i < pattern_size; ++i)
+            res += pow3[i] * calc_pop(idx, i, pattern_size);
+    } else if (pattern_idx == 8){
+        res += pow3[9] * calc_pop(idx, 0, pattern_size);
+        res += pow3[8] * calc_pop(idx, 4, pattern_size);
+        res += pow3[7] * calc_pop(idx, 7, pattern_size);
+        res += pow3[6] * calc_pop(idx, 9, pattern_size);
+        res += pow3[5] * calc_pop(idx, 1, pattern_size);
+        res += pow3[4] * calc_pop(idx, 5, pattern_size);
+        res += pow3[3] * calc_pop(idx, 8, pattern_size);
+        res += pow3[2] * calc_pop(idx, 2, pattern_size);
+        res += pow3[1] * calc_pop(idx, 6, pattern_size);
+        res += pow3[0] * calc_pop(idx, 3, pattern_size);
+    } else if (pattern_idx == 9){
+        res += pow3[9] * calc_pop(idx, 5, pattern_size);
+        res += pow3[8] * calc_pop(idx, 4, pattern_size);
+        res += pow3[7] * calc_pop(idx, 3, pattern_size);
+        res += pow3[6] * calc_pop(idx, 2, pattern_size);
+        res += pow3[5] * calc_pop(idx, 1, pattern_size);
+        res += pow3[4] * calc_pop(idx, 0, pattern_size);
+        res += pow3[3] * calc_pop(idx, 9, pattern_size);
+        res += pow3[2] * calc_pop(idx, 8, pattern_size);
+        res += pow3[1] * calc_pop(idx, 7, pattern_size);
+        res += pow3[0] * calc_pop(idx, 6, pattern_size);
+    } else if (pattern_idx == 10){
+        res += pow3[9] * calc_pop(idx, 0, pattern_size);
+        res += pow3[8] * calc_pop(idx, 1, pattern_size);
+        res += pow3[7] * calc_pop(idx, 2, pattern_size);
+        res += pow3[6] * calc_pop(idx, 3, pattern_size);
+        res += pow3[5] * calc_pop(idx, 7, pattern_size);
+        res += pow3[4] * calc_pop(idx, 8, pattern_size);
+        res += pow3[3] * calc_pop(idx, 9, pattern_size);
+        res += pow3[2] * calc_pop(idx, 4, pattern_size);
+        res += pow3[1] * calc_pop(idx, 5, pattern_size);
+        res += pow3[0] * calc_pop(idx, 6, pattern_size);
+    }
+    return res;
+}
+
+inline void pre_evaluation(int pattern_idx, int phase_idx, int evaluate_idx, int pattern_size, double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
     int digit;
-    double arr[20];
+    double arr[20], tmp_pattern_arr[max_evaluate_idx];
     for (int idx = 0; idx < pow3[pattern_size]; ++idx){
         for (int i = 0; i < pattern_size; ++i){
             digit = (idx / pow3[pattern_size - 1 - i]) % 3;
@@ -565,7 +609,10 @@ inline void pre_evaluation(int phase_idx, int evaluate_idx, int pattern_size, do
             }
         }
         pattern_arr[phase_idx][evaluate_idx][idx] = predict(pattern_size, arr, dense0, bias0, dense1, bias1, dense2, bias2);
+        tmp_pattern_arr[calc_rev_idx(pattern_idx, pattern_size, idx)] = pattern_arr[phase_idx][evaluate_idx][idx];
     }
+    for (int idx = 0; idx < pow3[pattern_size]; ++idx)
+        pattern_arr[phase_idx][evaluate_idx][idx] = (pattern_arr[phase_idx][evaluate_idx][idx] + tmp_pattern_arr[idx]) / 2.0;
 }
 /*
 inline void init_evaluation(){
@@ -680,7 +727,7 @@ inline void init_evaluation(){
             }
             getline(ifs, line);
             bias2 = stof(line);
-            pre_evaluation(phase_idx, pattern_idx, pattern_sizes[pattern_idx], dense0, bias0, dense1, bias1, dense2, bias2);
+            pre_evaluation(pattern_idx, phase_idx, pattern_idx, pattern_sizes[pattern_idx], dense0, bias0, dense1, bias1, dense2, bias2);
         }
         for (i = 0; i < n_all_input; ++i){
             getline(ifs, line);
@@ -779,186 +826,140 @@ inline int calc_canput_exact(const board *b){
     return res;
 }
 
+inline int sfill5(int b){
+    if (pop_digit[b][2] != 2)
+        return b - pow3[5] + 1;
+    return b;
+}
+
+inline int sfill4(int b){
+    if (pop_digit[b][3] != 2)
+        return b - pow3[4] + 1;
+    return b;
+}
+
+inline int sfill3(int b){
+    if (pop_digit[b][4] != 2)
+        return b - pow3[3] + 1;
+    return b;
+}
+
+inline int sfill2(int b){
+    if (pop_digit[b][5] != 2)
+        return b - pow3[2] + 1;
+    return b;
+}
+
+inline int sfill1(int b){
+    if (pop_digit[b][6] != 2)
+        return b - pow3[1] + 1;
+    return b;
+}
+
 inline int calc_canput(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += canput_arr[b->p][b->b[i]];
+    res += canput_arr[b->p][b->b[16] - pow3[5] + 1] + canput_arr[b->p][b->b[26] - pow3[5] + 1] + canput_arr[b->p][b->b[27] - pow3[5] + 1] + canput_arr[b->p][b->b[37] - pow3[5] + 1];
+    res += canput_arr[b->p][b->b[17] - pow3[4] + 1] + canput_arr[b->p][b->b[25] - pow3[4] + 1] + canput_arr[b->p][b->b[28] - pow3[4] + 1] + canput_arr[b->p][b->b[36] - pow3[4] + 1];
+    res += canput_arr[b->p][b->b[18] - pow3[3] + 1] + canput_arr[b->p][b->b[24] - pow3[3] + 1] + canput_arr[b->p][b->b[29] - pow3[3] + 1] + canput_arr[b->p][b->b[35] - pow3[3] + 1];
+    res += canput_arr[b->p][b->b[19] - pow3[2] + 1] + canput_arr[b->p][b->b[23] - pow3[2] + 1] + canput_arr[b->p][b->b[30] - pow3[2] + 1] + canput_arr[b->p][b->b[34] - pow3[2] + 1];
+    res += canput_arr[b->p][b->b[20] - pow3[1] + 1] + canput_arr[b->p][b->b[22] - pow3[1] + 1] + canput_arr[b->p][b->b[31] - pow3[1] + 1] + canput_arr[b->p][b->b[33] - pow3[1] + 1];
+    res += canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]];
     if (b->p)
-        return -res;
+        res = -res;
     return res;
 }
 
 inline int calc_surround0(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += surround_arr[0][b->b[i]];
+    res += surround_arr[0][sfill5(b->b[16])] + surround_arr[0][sfill5(b->b[26])] + surround_arr[0][sfill5(b->b[27])] + surround_arr[0][sfill5(b->b[37])];
+    res += surround_arr[0][sfill4(b->b[17])] + surround_arr[0][sfill4(b->b[25])] + surround_arr[0][sfill4(b->b[28])] + surround_arr[0][sfill4(b->b[36])];
+    res += surround_arr[0][sfill3(b->b[18])] + surround_arr[0][sfill3(b->b[24])] + surround_arr[0][sfill3(b->b[29])] + surround_arr[0][sfill3(b->b[35])];
+    res += surround_arr[0][sfill2(b->b[19])] + surround_arr[0][sfill2(b->b[23])] + surround_arr[0][sfill2(b->b[30])] + surround_arr[0][sfill2(b->b[34])];
+    res += surround_arr[0][sfill1(b->b[20])] + surround_arr[0][sfill1(b->b[22])] + surround_arr[0][sfill1(b->b[31])] + surround_arr[0][sfill1(b->b[33])];
+    res += surround_arr[0][b->b[21]] + surround_arr[0][b->b[32]];
     return res;
 }
 
 inline int calc_surround1(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += surround_arr[1][b->b[i]];
+    res += surround_arr[1][sfill5(b->b[16])] + surround_arr[1][sfill5(b->b[26])] + surround_arr[1][sfill5(b->b[27])] + surround_arr[1][sfill5(b->b[37])];
+    res += surround_arr[1][sfill4(b->b[17])] + surround_arr[1][sfill4(b->b[25])] + surround_arr[1][sfill4(b->b[28])] + surround_arr[1][sfill4(b->b[36])];
+    res += surround_arr[1][sfill3(b->b[18])] + surround_arr[1][sfill3(b->b[24])] + surround_arr[1][sfill3(b->b[29])] + surround_arr[1][sfill3(b->b[35])];
+    res += surround_arr[1][sfill2(b->b[19])] + surround_arr[1][sfill2(b->b[23])] + surround_arr[1][sfill2(b->b[30])] + surround_arr[1][sfill2(b->b[34])];
+    res += surround_arr[1][sfill1(b->b[20])] + surround_arr[1][sfill1(b->b[22])] + surround_arr[1][sfill1(b->b[31])] + surround_arr[1][sfill1(b->b[33])];
+    res += surround_arr[1][b->b[21]] + surround_arr[1][b->b[32]];
     return res;
 }
 
 inline int calc_phase_idx(const board *b){
-    int turn = b->n - 4;
-    if (turn < 30)
-        return 0;
-    else if (turn < 40)
-        return 1;
-    else if (turn < 50)
-        return 2;
-    return 3;
+    return max(0, min(3, (b->n - 4) / 10 - 2));
 }
 
 inline void calc_pattern(const board *b, double arr[]){
     int idx, phase_idx = calc_phase_idx(b);
-    double line2 = 0, line3 = 0, line4 = 0, diagonal5 = 0, diagonal6 = 0, diagonal7 = 0, diagonal8 = 0, edge_2x = 0, triangle = 0, edge_block = 0, cross = 0;
+    double edge_2x = 0.0, triangle = 0.0, edge_block = 0.0, cross = 0.0;
 
-    line2 += pattern_arr[phase_idx][0][b->b[1]];
-    line2 += pattern_arr[phase_idx][0][b->b[6]];
-    line2 += pattern_arr[phase_idx][0][b->b[9]];
-    line2 += pattern_arr[phase_idx][0][b->b[14]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[1]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[6]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[9]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[14]]];
-
-    line3 += pattern_arr[phase_idx][1][b->b[2]];
-    line3 += pattern_arr[phase_idx][1][b->b[5]];
-    line3 += pattern_arr[phase_idx][1][b->b[10]];
-    line3 += pattern_arr[phase_idx][1][b->b[13]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[2]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[5]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[10]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[13]]];
-
-    line4 += pattern_arr[phase_idx][2][b->b[3]];
-    line4 += pattern_arr[phase_idx][2][b->b[4]];
-    line4 += pattern_arr[phase_idx][2][b->b[11]];
-    line4 += pattern_arr[phase_idx][2][b->b[12]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[3]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[4]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[11]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[12]]];
-
-    diagonal5 += pattern_arr[phase_idx][3][b->b[18] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[24] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[29] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[35] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[18]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[24]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[29]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[35]]][5]];
-
-    diagonal6 += pattern_arr[phase_idx][4][b->b[19] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[23] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[30] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[34] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[19]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[23]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[30]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[34]]][6]];
-
-    diagonal7 += pattern_arr[phase_idx][5][b->b[20] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[22] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[31] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[33] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[20]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[22]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[31]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[33]]][7]];
-
-    diagonal8 += pattern_arr[phase_idx][6][b->b[21]];
-    diagonal8 += pattern_arr[phase_idx][6][b->b[32]];
-    diagonal8 += pattern_arr[phase_idx][6][reverse_board[b->b[21]]];
-    diagonal8 += pattern_arr[phase_idx][6][reverse_board[b->b[32]]];
+    arr[0] = pattern_arr[phase_idx][0][b->b[1]] + pattern_arr[phase_idx][0][b->b[6]] + pattern_arr[phase_idx][0][b->b[9]] + pattern_arr[phase_idx][0][b->b[14]];
+    arr[1] = pattern_arr[phase_idx][1][b->b[2]] + pattern_arr[phase_idx][1][b->b[5]] + pattern_arr[phase_idx][1][b->b[10]] + pattern_arr[phase_idx][1][b->b[13]];
+    arr[2] = pattern_arr[phase_idx][2][b->b[3]] + pattern_arr[phase_idx][2][b->b[4]] + pattern_arr[phase_idx][2][b->b[11]] + pattern_arr[phase_idx][2][b->b[12]];
+    arr[3] = pattern_arr[phase_idx][3][b->b[18] / pow3[3]] + pattern_arr[phase_idx][3][b->b[24] / pow3[3]] + pattern_arr[phase_idx][3][b->b[29] / pow3[3]] + pattern_arr[phase_idx][3][b->b[35] / pow3[3]];
+    arr[4] = pattern_arr[phase_idx][4][b->b[19] / pow3[2]] + pattern_arr[phase_idx][4][b->b[23] / pow3[2]] + pattern_arr[phase_idx][4][b->b[30] / pow3[2]] + pattern_arr[phase_idx][4][b->b[34] / pow3[2]];
+    arr[5] = pattern_arr[phase_idx][5][b->b[20] / pow3[1]] + pattern_arr[phase_idx][5][b->b[22] / pow3[1]] + pattern_arr[phase_idx][5][b->b[31] / pow3[1]] + pattern_arr[phase_idx][5][b->b[33] / pow3[1]];
+    arr[6] = pattern_arr[phase_idx][6][b->b[21]] + pattern_arr[phase_idx][6][b->b[32]];
 
     idx = pop_digit[b->b[1]][1] * pow3[9] + b->b[0] * pow3[1] + pop_digit[b->b[1]][6];
     edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[1]][6] * pow3[9] + reverse_board[b->b[0]] * pow3[1] + pop_digit[b->b[1]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
     idx = pop_digit[b->b[6]][1] * pow3[9] + b->b[7] * pow3[1] + pop_digit[b->b[6]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[6]][6] * pow3[9] + reverse_board[b->b[7]] * pow3[1] + pop_digit[b->b[6]][1];
     edge_2x += pattern_arr[phase_idx][7][idx];
     idx = pop_digit[b->b[9]][1] * pow3[9] + b->b[8] * pow3[1] + pop_digit[b->b[9]][6];
     edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[9]][6] * pow3[9] + reverse_board[b->b[8]] * pow3[1] + pop_digit[b->b[9]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
     idx = pop_digit[b->b[14]][1] * pow3[9] + b->b[15] * pow3[1] + pop_digit[b->b[14]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[14]][6] * pow3[9] + reverse_board[b->b[15]] * pow3[1] + pop_digit[b->b[14]][1];
     edge_2x += pattern_arr[phase_idx][7][idx];
 
     idx = b->b[0] / pow3[4] * pow3[6] + b->b[1] / pow3[5] * pow3[3] + b->b[2] / pow3[6] * pow3[1] + b->b[3] / pow3[7];
     triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[0]] / pow3[4] * pow3[6] + reverse_board[b->b[1]] / pow3[5] * pow3[3] + reverse_board[b->b[2]] / pow3[6] * pow3[1] + reverse_board[b->b[3]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
     idx = b->b[7] / pow3[4] * pow3[6] + b->b[6] / pow3[5] * pow3[3] + b->b[5] / pow3[6] * pow3[1] + b->b[4] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[7]] / pow3[4] * pow3[6] + reverse_board[b->b[6]] / pow3[5] * pow3[3] + reverse_board[b->b[5]] / pow3[6] * pow3[1] + reverse_board[b->b[4]] / pow3[7];
     triangle += pattern_arr[phase_idx][8][idx];
     idx = b->b[8] / pow3[4] * pow3[6] + b->b[9] / pow3[5] * pow3[3] + b->b[10] / pow3[6] * pow3[1] + b->b[11] / pow3[7];
     triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[8]] / pow3[4] * pow3[6] + reverse_board[b->b[9]] / pow3[5] * pow3[3] + reverse_board[b->b[10]] / pow3[6] * pow3[1] + reverse_board[b->b[11]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
     idx = b->b[15] / pow3[4] * pow3[6] + b->b[14] / pow3[5] * pow3[3] + b->b[13] / pow3[6] * pow3[1] + b->b[12] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[15]] / pow3[4] * pow3[6] + reverse_board[b->b[14]] / pow3[5] * pow3[3] + reverse_board[b->b[13]] / pow3[6] * pow3[1] + reverse_board[b->b[12]] / pow3[7];
     triangle += pattern_arr[phase_idx][8][idx];
 
     idx = pop_digit[b->b[0]][0] * pow3[9] + pop_mid[b->b[0]][6][2] * pow3[5] + pop_digit[b->b[0]][7] * pow3[4] + pop_mid[b->b[1]][6][2];
     edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[0]][7] * pow3[9] + pop_mid[reverse_board[b->b[0]]][6][2] * pow3[5] + pop_digit[b->b[0]][0] * pow3[4] + pop_mid[reverse_board[b->b[1]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
     idx = pop_digit[b->b[7]][0] * pow3[9] + pop_mid[b->b[7]][6][2] * pow3[5] + pop_digit[b->b[7]][7] * pow3[4] + pop_mid[b->b[6]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[7]][7] * pow3[9] + pop_mid[reverse_board[b->b[7]]][6][2] * pow3[5] + pop_digit[b->b[7]][0] * pow3[4] + pop_mid[reverse_board[b->b[6]]][6][2];
     edge_block += pattern_arr[phase_idx][9][idx];
     idx = pop_digit[b->b[8]][0] * pow3[9] + pop_mid[b->b[8]][6][2] * pow3[5] + pop_digit[b->b[8]][7] * pow3[4] + pop_mid[b->b[9]][6][2];
     edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[8]][7] * pow3[9] + pop_mid[reverse_board[b->b[8]]][6][2] * pow3[5] + pop_digit[b->b[8]][0] * pow3[4] + pop_mid[reverse_board[b->b[9]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
     idx = pop_digit[b->b[15]][0] * pow3[9] + pop_mid[b->b[15]][6][2] * pow3[5] + pop_digit[b->b[15]][7] * pow3[4] + pop_mid[b->b[14]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[15]][7] * pow3[9] + pop_mid[reverse_board[b->b[15]]][6][2] * pow3[5] + pop_digit[b->b[15]][0] * pow3[4] + pop_mid[reverse_board[b->b[14]]][6][2];
     edge_block += pattern_arr[phase_idx][9][idx];
 
     idx = b->b[21] / pow3[4] * pow3[6] + b->b[20] / pow3[5] * pow3[3] + b->b[22] / pow3[5];
     cross += pattern_arr[phase_idx][10][idx];
-    idx = b->b[21] / pow3[4] * pow3[6] + b->b[22] / pow3[5] * pow3[3] + b->b[20] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
     idx = b->b[32] / pow3[4] * pow3[6] + b->b[31] / pow3[5] * pow3[3] + b->b[33] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = b->b[32] / pow3[4] * pow3[6] + b->b[33] / pow3[5] * pow3[3] + b->b[31] / pow3[5];
     cross += pattern_arr[phase_idx][10][idx];
     idx = reverse_board[b->b[21]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[20]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[22]]][7][4];
     cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[21]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[22]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[20]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
     idx = reverse_board[b->b[32]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[31]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[33]]][7][4];
     cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[32]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[33]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[31]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
 
-    arr[0] = line2 / 8;
-    arr[1] = line3 / 8;
-    arr[2] = line4 / 8;
-    arr[3] = diagonal5 / 8;
-    arr[4] = diagonal6 / 8;
-    arr[5] = diagonal7 / 8;
-    arr[6] = diagonal8 / 4;
-    arr[7] = edge_2x / 8;
-    arr[8] = triangle / 8;
-    arr[9] = edge_block / 8;
-    arr[10] = cross / 8;
-
-    //cerr << line2 << " " << line3 << " " << line4 << " " << diagonal5 << " " << diagonal6 << " " << diagonal7 << " " << diagonal8 * 2 << " " << edge_2x << " " << triangle << " " << edge_block << " " << cross << endl;
-
-    //return (line2 + line3 + line4 + diagonal5 + diagonal6 + diagonal7 + diagonal8 * 2 + edge_2x + triangle + edge_block + cross) / 8;
+    arr[0] /= 4;
+    arr[1] /= 4;
+    arr[2] /= 4;
+    arr[3] /= 4;
+    arr[4] /= 4;
+    arr[5] /= 4;
+    arr[6] /= 2;
+    arr[7] = edge_2x / 4.0;
+    arr[8] = triangle / 4.0;
+    arr[9] = edge_block / 4.0;
+    arr[10] = cross / 4.0;
 }
 
 inline int evaluate(const board *b){
@@ -968,14 +969,12 @@ inline int evaluate(const board *b){
     in_arr[11] = (double)calc_canput(b) / 30.0;
     in_arr[12] = ((double)calc_surround0(b) - 15.0) / 15.0;
     in_arr[13] = ((double)calc_surround1(b) - 15.0) / 15.0;
-    //for (int i = 0; i < 14; ++i)
-    //    cerr << in_arr[i] << endl;
     double res = all_bias[phase_idx];
     for (int i = 0; i < n_all_input; ++i)
         res += in_arr[i] * all_dense[phase_idx][i];
     if (b->p)
         res = -res;
-    return (int)(res * sc_w);
+    return (int)(max(-1.0, min(1.0, res)) * sc_w);
 }
 
 bool move_ordering(const board p, const board q){

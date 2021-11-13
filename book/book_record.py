@@ -84,15 +84,16 @@ for i in trange(127):
             elif score > 0:
                 win_data(record, 0)
                 lose_data(record, 1)
+                black_win += 1
             else:
                 lose_data(record, 0)
                 win_data(record, 1)
+                white_win += 1
     except:
         print('cannot open', i)
         continue
-
+'''
 inf = 100000
-
 with open('third_party/records3.txt', 'r') as f:
     records = f.read().splitlines()
 for record in records:
@@ -106,16 +107,15 @@ for record in records:
         else:
             record_all[record_proc][0] += 1
             record_all[record_proc][1] += inf
-
 print(len(record_all))
-
+'''
 print(black_win, white_win)
 
 book = {}
 
 max_ln = 40
 
-num_threshold1 = 3
+num_threshold1 = 2
 num_threshold2 = 5
 
 inf = 100000000
