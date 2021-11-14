@@ -46,7 +46,7 @@ def collect_data(num):
         board, player, _, _, _, _ = datum.split()
         n_stones = calc_n_stones(board)
         depth = randint(3, 10)
-        board_proc = player + '\n' + str(depth // 2) + '\n' + str(int(depth)) + '\n'
+        board_proc = player + '\n' + str(depth // 4) + '\n' + str(int(depth)) + '\n'
         for i in range(hw):
             for j in range(hw):
                 board_proc += board[i * hw + j]

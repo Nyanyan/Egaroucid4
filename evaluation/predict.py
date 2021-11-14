@@ -134,19 +134,11 @@ def calc_n_stones(board):
         res += int(elem != '.')
     return res
 
-
-'''
-# player = 0 ans = -6
-board = '..00001.0.0001.100001011000100010010110101010011011110.1010000..'
-v1 = 9
+# player = 1 ans = 26
+board = '...............0..0110.0...11000..000000...11110...111....1..1..'
+v1 = -11
 v2 = 27
-v3 = 16
-'''
-# player = 1 ans = 12
-board = '..111111..110001.1101001000110010011110101000001.1101001.0000000'
-v1 = -13
-v2 = 17
-v3 = 16
+v3 = 29
 
 for i in range(len(pattern_idx)):
     lines = make_lines(board, pattern_idx[i])
@@ -159,7 +151,7 @@ all_raw_data.append(board)
 def my_loss(y_true, y_pred):
     return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
 
-model = load_model('learned_data/50_60.h5', custom_objects={'my_loss': my_loss})
+model = load_model('learned_data/20_30.h5', custom_objects={'my_loss': my_loss})
 pattern_out = Model(inputs=model.input, outputs=model.get_layer('concatenate_1').output)
 
 #model.summary()
@@ -184,7 +176,7 @@ prediction = pattern_out.predict(all_data)
 print(prediction)
 #print(sum(prediction[i][0] for i in range(len(all_data[0]))) / len(all_data[0]))
 #print(sum(prediction[i][0] for i in range(len(all_data[0]))))
-for i in range(16):
+for i in range(14):
     tmp = 0
     for j in range(8):
         tmp += prediction[j][i]

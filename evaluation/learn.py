@@ -9,6 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.constraints import max_norm
+from keras.layers.noise import GaussianNoise
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
@@ -26,7 +27,7 @@ for stone_strt in [20, 30, 40, 50]:
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 126000
+    game_num = 10000 #126000
     test_ratio = 0.1
     n_epochs = 200
     one_board_num = 1
@@ -201,10 +202,9 @@ for stone_strt in [20, 30, 40, 50]:
     y_pattern = Concatenate(axis=-1)(ys)
     x.append(Input(shape=(3), name='additional_input'))
     x_all = Concatenate(axis=-1)([y_pattern, x[len(pattern_idx)]])
-    #y_all = Dense(16, name='add_dense0')(x_all)
-    #y_all = LeakyReLU(alpha=0.01)(y_all)
+    #y_all = GaussianNoise(1e-2)(x_all)
+    #y_all = Dense(1, name='add_dense1')(y_all)
     y_all = Dense(1, name='add_dense1')(x_all)
-    #y_all = Activation('tanh')(y_all)
 
     model = Model(inputs=x, outputs=y_all)
 

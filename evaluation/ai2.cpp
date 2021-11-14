@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define tl 15
+#define tl 10
 #define final_tl 120
 
 #define hw 8
@@ -368,8 +368,11 @@ inline void init_mpc(){
 
 inline void init_search_hash_table(){
     for (int i = 0; i < 2; ++i){
-        for (int j = 0; j < search_hash_table_size; ++j)
+        for (int j = 0; j < search_hash_table_size; ++j){
             search_replace_table[i][j] = (search_node*)malloc(sizeof(search_node));
+            search_replace_table[i][j]->reg = false;
+            search_replace_table[i][j]->p_n_node = NULL;
+        }
     }
 }
 
@@ -642,6 +645,15 @@ inline void init_evaluation(){
 
 inline void search_hash_table_init(const int table_idx){
     for(int i = 0; i < search_hash_table_size; ++i){
+        vector<search_node*> free_lst;
+        search_node *p_node = search_replace_table[table_idx][i];
+        p_node = p_node->p_n_node;
+        while(p_node != NULL){
+            free_lst.push_back(p_node);
+            p_node = p_node->p_n_node;
+        }
+        for (int j = 0; j < (int)free_lst.size(); ++j)
+            free(free_lst[j]);
         search_replace_table[table_idx][i]->reg = false;
         search_replace_table[table_idx][i]->p_n_node = NULL;
     }
@@ -861,13 +873,13 @@ inline int evaluate(const board *b){
 int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta);
 
 inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
-    //return false;
+    return false;
     int bound = alpha - mpctsd[(b->n - 4) / 10];
     return nega_alpha(b, tim(), skipped, depth / 4, bound, bound + epsilon) <= bound;
 }
 
 inline bool mpc_higher(const board *b, bool skipped, int depth, int beta){
-    //return false;
+    return false;
     int bound = beta + mpctsd[(b->n - 4) / 10];
     return nega_alpha(b, tim(), skipped, depth / 4, bound - epsilon, bound) >= bound;
 }
@@ -1335,7 +1347,7 @@ inline search_result search(const board b, long long strt){
     cerr << endl;
     int canput = nb.size();
     cerr << "canput: " << canput << endl;
-    int depth = 4;
+    int depth = 2;
     int res_depth;
     int policy = -1;
     int tmp_policy, i;
