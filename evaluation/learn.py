@@ -21,12 +21,12 @@ from copy import deepcopy
 
 inf = 10000000.0
 
-for stone_strt in [30, 40, 50]:
+for stone_strt in [20, 30, 40, 50]:
     stone_end = stone_strt + 10
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 26000 #126000
+    game_num = 126000
     test_ratio = 0.1
     n_epochs = 200
     one_board_num = 1

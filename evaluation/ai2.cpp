@@ -16,7 +16,8 @@
 
 using namespace std;
 
-#define tl 600
+#define tl 15
+#define final_tl 120
 
 #define hw 8
 #define hw_m1 7
@@ -30,19 +31,16 @@ using namespace std;
 #define max_evaluate_idx 59049
 #define inf 1000000
 #define b_idx_num 38
+#define ln_char 27605
+#define f_weight 0.000105
 
-#define book_hash_table_size 16384
-#define book_hash_mask (book_hash_table_size - 1)
+#define book_hash_table_size 8192
+constexpr int book_hash_mask = book_hash_table_size - 1;
 #define book_stones 55
 #define ln_repair_book 27
 
-#define search_hash_table_size 1048576
-#define search_hash_mask (search_hash_table_size - 1)
-
-#define epsilon 1
-#define sc_w 6400
-#define cache_hit 150
-#define cache_exact 150
+#define search_hash_table_size 32768
+constexpr int search_hash_mask = search_hash_table_size - 1;
 
 #define n_phases 4
 #define n_patterns 11
@@ -50,7 +48,13 @@ using namespace std;
 #define n_dense1 16
 #define n_all_input 14
 
-#define win_read_depth 22
+#define epsilon 1
+#define sc_w 6400
+#define cache_hit 200
+#define cache_both 150
+#define mtd_threshold 2500
+#define win_read_depth 20
+
 
 struct board{
     int b[b_idx_num];
@@ -64,13 +68,14 @@ struct board{
 };
 
 struct book_node{
-    int k[hw];
+    int k[4];
     int policy;
     book_node* p_n_node;
 };
 
 struct search_node{
-    int k[hw];
+    bool reg;
+    int k[4];
     int l;
     int u;
     search_node* p_n_node;
@@ -80,6 +85,7 @@ struct search_result{
     int policy;
     int value;
     int depth;
+    int nps;
 };
 
 const int idx_n_cell[b_idx_num] = {8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3};
@@ -114,18 +120,17 @@ int pop_digit[n_line][hw];
 int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
-int surround_arr[2][n_line];;
-const double mpct[6] = {1.7,1.7,1.7,1.8,1.7,1.7};
-const double mpcsd[6] = {560.7975591436935, 337.49492491290687, 416.31458411693575, 546.6953190219247, 638.6333152160814, 617.7250010117876};
+int surround_arr[2][n_line];
+const double mpct[6] = {1.6,1.7,1.8,2.0,1.7,1.5};
+const double mpcsd[6] = {356.5957416144003, 278.1827362847768, 340.96982875463533, 450.72937066846185, 474.8305200281307, 440.9926826745798};
 int mpctsd[6];
 
 vector<int> vacant_lst;
 book_node *book[book_hash_table_size];
 search_node *search_replace_table[2][search_hash_table_size];
-long long searched_nodes;
+long long searched_nodes, hash_conf, hash_get;
 int f_search_table_idx;
 double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
-//int ev_arr[n_phases][resol_pattern][resol_surround][resol_surround];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
 
@@ -140,9 +145,9 @@ inline unsigned long long calc_hash(const int *p){
     return seed;
 }
 
-inline bool compare_key(const int *a, const int *b){
-    for (int i = 0; i < hw; ++i){
-        if (a[i] != b[i])
+inline bool compare_key(const int a[], const int b[]){
+    for (int i = 0; i < 4; ++i){
+        if (a[i * 2] + a[i * 2 + 1] * n_line != b[i])
             return false;
     }
     return true;
@@ -229,7 +234,6 @@ inline void init_pow(){
 
 inline void init_move(){
     int idx, b, w, place;
-    bool surround_flag;
     for (idx = 0; idx < n_line; ++idx){
         b = create_one_color(idx, 0);
         w = create_one_color(idx, 1);
@@ -252,19 +256,22 @@ inline void init_move(){
                 reverse_board[idx] += 1;
             else
                 reverse_board[idx] += 2;
-            surround_flag = false;
             if (place > 0){
-                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place - 1))) == 0 && (1 & (w >> (place - 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
             if (place < hw_m1){
-                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0)
-                    surround_flag = true;
+                if ((1 & (b >> (place + 1))) == 0 && (1 & (w >> (place + 1))) == 0){
+                    if (1 & (b >> place))
+                        ++surround_arr[0][idx];
+                    else if (1 & (w >> place))
+                        ++surround_arr[1][idx];
+                }
             }
-            if (1 & (b >> place) && surround_flag)
-                ++surround_arr[0][idx];
-            else if (1 & (w >> place) && surround_flag)
-                ++surround_arr[1][idx];
         }
         for (place = 0; place < hw; ++place){
             move_arr[0][idx][place][0] = move_line_half(b, w, place, 0);
@@ -359,6 +366,13 @@ inline void init_mpc(){
         mpctsd[i] = (int)(mpct[i] * mpcsd[i]);
 }
 
+inline void init_search_hash_table(){
+    for (int i = 0; i < 2; ++i){
+        for (int j = 0; j < search_hash_table_size; ++j)
+            search_replace_table[i][j] = (search_node*)malloc(sizeof(search_node));
+    }
+}
+
 inline board move(const board *b, const int global_place){
     board res;
     int j, place, g_place;
@@ -393,8 +407,8 @@ inline void book_hash_table_init(book_node** hash_table){
 inline book_node* book_node_init(const int *key, int policy){
     book_node* p_node = NULL;
     p_node = (book_node*)malloc(sizeof(book_node));
-    for (int i = 0; i < hw; ++i)
-        p_node->k[i] = key[i];
+    for (int i = 0; i < 4; ++i)
+        p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
     p_node->policy = policy;
     p_node->p_n_node = NULL;
     return p_node;
@@ -471,68 +485,12 @@ inline int zip_to_int_book(string param_compressed1, int zip_int[]){
     return siz * 2;
 }
 
-inline void init_book(){
-    int i;
-    unordered_map<char, int> char_keys;
-    const string book_chars = "!#$&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abc";
-    string param_compressed1;
-    for (i = 0; i < hw2; ++i)
-        char_keys[book_chars[i]] = i;
-    ifstream ifs("book/param/book.txt");
-    if (ifs.fail()){
-        cerr << "book file not exist" << endl;
-        exit(1);
-    }
-    getline(ifs, param_compressed1);
-    int ln = param_compressed1.length();
-    int coord;
-    board fb;
-    const int first_board[b_idx_num] = {6560, 6560, 6560, 6425, 6326, 6560, 6560, 6560, 6560, 6560, 6560, 6425, 6344, 6506, 6560, 6560, 6560, 6560, 6560, 6560, 6344, 6425, 6398, 6560, 6560, 6560, 6560, 6560, 6560, 6560, 6560, 6479, 6344, 6398, 6074, 6560, 6560, 6560};
-    book_hash_table_init(book);
-    int data_idx = 0;
-    int n_book = 0;
-    int y, x;
-    int tmp[16];
-    while (data_idx < ln){
-        fb.p = 1;
-        for (i = 0; i < b_idx_num; ++i)
-            fb.b[i] = first_board[i];
-        while (true){
-            if (param_compressed1[data_idx] == ' '){
-                ++data_idx;
-                break;
-            }
-            coord = char_keys[param_compressed1[data_idx++]];
-            fb = move(&fb, coord);
-        }
-        coord = char_keys[param_compressed1[data_idx++]];
-        y = coord / hw;
-        x = coord % hw;
-        register_book(book, fb.b, calc_hash(fb.b) & book_hash_mask, y * hw + x);
-        for (i = 0; i < 8; ++i)
-            swap(fb.b[i], fb.b[8 + i]);
-        register_book(book, fb.b, calc_hash(fb.b) & book_hash_mask, x * hw + y);
-        for (i = 0; i < 16; ++i)
-            tmp[i] = fb.b[i];
-        for (i = 0; i < 8; ++i)
-            fb.b[i] = reverse_board[tmp[7 - i]];
-        for (i = 0; i < 8; ++i)
-            fb.b[8 + i] = reverse_board[tmp[15 - i]];
-        register_book(book, fb.b, calc_hash(fb.b) & book_hash_mask, (hw_m1 - x) * hw + (hw_m1 - y));
-        for (i = 0; i < 8; ++i)
-            swap(fb.b[i], fb.b[8 + i]);
-        register_book(book, fb.b, calc_hash(fb.b) & book_hash_mask, (hw_m1 - y) * hw + (hw_m1 - x));
-        n_book += 4;
-    }
-    cerr << n_book << " boards in book" << endl;
-}
-
 inline double leaky_relu(double x){
     return max(0.01 * x, x);
 }
 
 inline double predict(int pattern_size, double in_arr[], double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
-    double hidden0[16], hidden1[16];
+    double hidden0[16], hidden1;
     int i, j;
     for (i = 0; i < n_dense0; ++i){
         hidden0[i] = bias0[i];
@@ -540,22 +498,67 @@ inline double predict(int pattern_size, double in_arr[], double dense0[n_dense0]
             hidden0[i] += in_arr[j] * dense0[i][j];
         hidden0[i] = leaky_relu(hidden0[i]);
     }
-    for (i = 0; i < n_dense1; ++i){
-        hidden1[i] = bias1[i];
-        for (j = 0; j < n_dense0; ++j)
-            hidden1[i] += hidden0[j] * dense1[i][j];
-        hidden1[i] = leaky_relu(hidden1[i]);
-    }
     double res = bias2;
-    for (i = 0; i < n_dense1; ++i)
-        res += hidden1[i] * dense2[i];
+    for (i = 0; i < n_dense1; ++i){
+        hidden1 = bias1[i];
+        for (j = 0; j < n_dense0; ++j)
+            hidden1 += hidden0[j] * dense1[i][j];
+        hidden1 = leaky_relu(hidden1);
+        res += hidden1 * dense2[i];
+    }
     res = leaky_relu(res);
     return res;
 }
 
-inline void pre_evaluation(int phase_idx, int evaluate_idx, int pattern_size, double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
+inline int calc_pop(int a, int b, int s){
+    return (a / pow3[s - 1 - b]) % 3;
+}
+
+inline int calc_rev_idx(int pattern_idx, int pattern_size, int idx){
+    int res = 0;
+    if (pattern_idx <= 7){
+        for (int i = 0; i < pattern_size; ++i)
+            res += pow3[i] * calc_pop(idx, i, pattern_size);
+    } else if (pattern_idx == 8){
+        res += pow3[9] * calc_pop(idx, 0, pattern_size);
+        res += pow3[8] * calc_pop(idx, 4, pattern_size);
+        res += pow3[7] * calc_pop(idx, 7, pattern_size);
+        res += pow3[6] * calc_pop(idx, 9, pattern_size);
+        res += pow3[5] * calc_pop(idx, 1, pattern_size);
+        res += pow3[4] * calc_pop(idx, 5, pattern_size);
+        res += pow3[3] * calc_pop(idx, 8, pattern_size);
+        res += pow3[2] * calc_pop(idx, 2, pattern_size);
+        res += pow3[1] * calc_pop(idx, 6, pattern_size);
+        res += pow3[0] * calc_pop(idx, 3, pattern_size);
+    } else if (pattern_idx == 9){
+        res += pow3[9] * calc_pop(idx, 5, pattern_size);
+        res += pow3[8] * calc_pop(idx, 4, pattern_size);
+        res += pow3[7] * calc_pop(idx, 3, pattern_size);
+        res += pow3[6] * calc_pop(idx, 2, pattern_size);
+        res += pow3[5] * calc_pop(idx, 1, pattern_size);
+        res += pow3[4] * calc_pop(idx, 0, pattern_size);
+        res += pow3[3] * calc_pop(idx, 9, pattern_size);
+        res += pow3[2] * calc_pop(idx, 8, pattern_size);
+        res += pow3[1] * calc_pop(idx, 7, pattern_size);
+        res += pow3[0] * calc_pop(idx, 6, pattern_size);
+    } else if (pattern_idx == 10){
+        res += pow3[9] * calc_pop(idx, 0, pattern_size);
+        res += pow3[8] * calc_pop(idx, 1, pattern_size);
+        res += pow3[7] * calc_pop(idx, 2, pattern_size);
+        res += pow3[6] * calc_pop(idx, 3, pattern_size);
+        res += pow3[5] * calc_pop(idx, 7, pattern_size);
+        res += pow3[4] * calc_pop(idx, 8, pattern_size);
+        res += pow3[3] * calc_pop(idx, 9, pattern_size);
+        res += pow3[2] * calc_pop(idx, 4, pattern_size);
+        res += pow3[1] * calc_pop(idx, 5, pattern_size);
+        res += pow3[0] * calc_pop(idx, 6, pattern_size);
+    }
+    return res;
+}
+
+inline void pre_evaluation(int pattern_idx, int phase_idx, int evaluate_idx, int pattern_size, double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
     int digit;
-    double arr[20];
+    double arr[20], tmp_pattern_arr[max_evaluate_idx];
     for (int idx = 0; idx < pow3[pattern_size]; ++idx){
         for (int i = 0; i < pattern_size; ++i){
             digit = (idx / pow3[pattern_size - 1 - i]) % 3;
@@ -571,16 +574,18 @@ inline void pre_evaluation(int phase_idx, int evaluate_idx, int pattern_size, do
             }
         }
         pattern_arr[phase_idx][evaluate_idx][idx] = predict(pattern_size, arr, dense0, bias0, dense1, bias1, dense2, bias2);
+        tmp_pattern_arr[calc_rev_idx(pattern_idx, pattern_size, idx)] = pattern_arr[phase_idx][evaluate_idx][idx];
+    }
+    for (int idx = 0; idx < pow3[pattern_size]; ++idx){
+        pattern_arr[phase_idx][evaluate_idx][idx] = pattern_arr[phase_idx][evaluate_idx][idx] + tmp_pattern_arr[idx];
+        if (pattern_idx == 6)
+            pattern_arr[phase_idx][evaluate_idx][idx] /= 4.0;
+        else
+            pattern_arr[phase_idx][evaluate_idx][idx] /= 8.0;
     }
 }
 
 inline void init_evaluation(){
-    ifstream ifs("param/param.txt");
-    if (ifs.fail()){
-        cerr << "evaluation file not exist" << endl;
-        exit(1);
-    }
-    string line;
     int i, j, phase_idx, pattern_idx;
     double dense0[n_dense0][20];
     double bias0[n_dense0];
@@ -589,6 +594,13 @@ inline void init_evaluation(){
     double dense2[n_dense1];
     double bias2;
     const int pattern_sizes[n_patterns] = {8, 8, 8, 5, 6, 7, 8, 10, 10, 10, 10};
+    string file_str, line;
+    cin >> file_str;
+    ifstream ifs("param/" + file_str);
+    if (ifs.fail()){
+        cerr << "evaluation file not exist" << endl;
+        exit(1);
+    }
     for (phase_idx = 0; phase_idx < n_phases; ++phase_idx){
         for (pattern_idx = 0; pattern_idx < n_patterns; ++pattern_idx){
             for (i = 0; i < pattern_sizes[pattern_idx] * 2; ++i){
@@ -617,7 +629,7 @@ inline void init_evaluation(){
             }
             getline(ifs, line);
             bias2 = stof(line);
-            pre_evaluation(phase_idx, pattern_idx, pattern_sizes[pattern_idx], dense0, bias0, dense1, bias1, dense2, bias2);
+            pre_evaluation(pattern_idx, phase_idx, pattern_idx, pattern_sizes[pattern_idx], dense0, bias0, dense1, bias1, dense2, bias2);
         }
         for (i = 0; i < n_all_input; ++i){
             getline(ifs, line);
@@ -628,6 +640,14 @@ inline void init_evaluation(){
     }
 }
 
+inline void search_hash_table_init(const int table_idx){
+    for(int i = 0; i < search_hash_table_size; ++i){
+        search_replace_table[table_idx][i]->reg = false;
+        search_replace_table[table_idx][i]->p_n_node = NULL;
+    }
+}
+
+/*
 inline void search_hash_table_init(const int table_idx){
     for(int i = 0; i < search_hash_table_size; ++i){
         vector<search_node*> free_lst;
@@ -641,12 +661,14 @@ inline void search_hash_table_init(const int table_idx){
         search_replace_table[table_idx][i] = NULL;
     }
 }
+*/
 
 inline search_node* search_node_init(const int *key, int l, int u){
     search_node* p_node = NULL;
     p_node = (search_node*)malloc(sizeof(search_node));
-    for (int i = 0; i < hw; ++i)
-        p_node->k[i] = key[i];
+    for (int i = 0; i < 4; ++i)
+        p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
+    p_node->reg = true;
     p_node->l = l;
     p_node->u = u;
     p_node->p_n_node = NULL;
@@ -654,12 +676,10 @@ inline search_node* search_node_init(const int *key, int l, int u){
 }
 
 inline void register_search(const int table_idx, const int *key, int hash, int l, int u){
-    if(search_replace_table[table_idx][hash] == NULL){
-        search_replace_table[table_idx][hash] = search_node_init(key, l, u);
-    } else {
-        search_node *p_node = search_replace_table[table_idx][hash];
-        search_node *p_pre_node = NULL;
-        p_pre_node = p_node;
+    search_node *p_node = search_replace_table[table_idx][hash];
+    search_node *p_pre_node = NULL;
+    p_pre_node = p_node;
+    if (p_node->reg){
         while(p_node != NULL){
             if(compare_key(key, p_node->k)){
                 p_node->l = l;
@@ -670,18 +690,29 @@ inline void register_search(const int table_idx, const int *key, int hash, int l
             p_node = p_node->p_n_node;
         }
         p_pre_node->p_n_node = search_node_init(key, l, u);
+    } else{
+        for (int i = 0; i < 4; ++i)
+            p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
+        p_node->reg = true;
+        p_node->l = l;
+        p_node->u = u;
+        p_node->p_n_node = NULL;
     }
 }
 
 inline void get_search(const int *key, const int hash, const int table_idx, int *l, int *u){
     search_node *p_node = search_replace_table[table_idx][hash];
-    while(p_node != NULL){
-        if(compare_key(key, p_node->k)){
-            *l = p_node->l;
-            *u = p_node->u;
-            return;
+    ++hash_get;
+    if (p_node->reg){
+        while(p_node != NULL){
+            if(compare_key(key, p_node->k)){
+                *l = p_node->l;
+                *u = p_node->u;
+                return;
+            }
+            ++hash_conf;
+            p_node = p_node->p_n_node;
         }
-        p_node = p_node->p_n_node;
     }
     *l = -inf;
     *u = -inf;
@@ -693,7 +724,11 @@ inline int end_game(const board *b){
         count += count_arr[b->b[idx]];
     if (b->p == 1)
         count = -count;
-    return count * sc_w / hw2;
+    if (count > 0)
+        return sc_w;
+    else if (count == 0)
+        return 0;
+    return -sc_w;
 }
 
 inline int calc_canput_exact(const board *b){
@@ -711,26 +746,64 @@ inline int calc_canput_exact(const board *b){
     return res;
 }
 
+inline int sfill5(int b){
+    return pop_digit[b][2] != 2 ? b - pow3[5] + 1 : b;
+}
+
+inline int sfill4(int b){
+    return pop_digit[b][3] != 2 ? b - pow3[4] + 1 : b;
+}
+
+inline int sfill3(int b){
+    return pop_digit[b][4] != 2 ? b - pow3[3] + 1 : b;
+}
+
+inline int sfill2(int b){
+    return pop_digit[b][5] != 2 ? b - pow3[2] + 1 : b;
+}
+
+inline int sfill1(int b){
+    return pop_digit[b][6] != 2 ? b - pow3[1] + 1 : b;
+}
+
 inline int calc_canput(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += canput_arr[b->p][b->b[i]];
+    res += canput_arr[b->p][b->b[16] - pow3[5] + 1] + canput_arr[b->p][b->b[26] - pow3[5] + 1] + canput_arr[b->p][b->b[27] - pow3[5] + 1] + canput_arr[b->p][b->b[37] - pow3[5] + 1];
+    res += canput_arr[b->p][b->b[17] - pow3[4] + 1] + canput_arr[b->p][b->b[25] - pow3[4] + 1] + canput_arr[b->p][b->b[28] - pow3[4] + 1] + canput_arr[b->p][b->b[36] - pow3[4] + 1];
+    res += canput_arr[b->p][b->b[18] - pow3[3] + 1] + canput_arr[b->p][b->b[24] - pow3[3] + 1] + canput_arr[b->p][b->b[29] - pow3[3] + 1] + canput_arr[b->p][b->b[35] - pow3[3] + 1];
+    res += canput_arr[b->p][b->b[19] - pow3[2] + 1] + canput_arr[b->p][b->b[23] - pow3[2] + 1] + canput_arr[b->p][b->b[30] - pow3[2] + 1] + canput_arr[b->p][b->b[34] - pow3[2] + 1];
+    res += canput_arr[b->p][b->b[20] - pow3[1] + 1] + canput_arr[b->p][b->b[22] - pow3[1] + 1] + canput_arr[b->p][b->b[31] - pow3[1] + 1] + canput_arr[b->p][b->b[33] - pow3[1] + 1];
+    res += canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]];
     if (b->p)
-        return -res;
+        res = -res;
     return res;
 }
 
 inline int calc_surround0(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += surround_arr[0][b->b[i]];
+    res += surround_arr[0][sfill5(b->b[16])] + surround_arr[0][sfill5(b->b[26])] + surround_arr[0][sfill5(b->b[27])] + surround_arr[0][sfill5(b->b[37])];
+    res += surround_arr[0][sfill4(b->b[17])] + surround_arr[0][sfill4(b->b[25])] + surround_arr[0][sfill4(b->b[28])] + surround_arr[0][sfill4(b->b[36])];
+    res += surround_arr[0][sfill3(b->b[18])] + surround_arr[0][sfill3(b->b[24])] + surround_arr[0][sfill3(b->b[29])] + surround_arr[0][sfill3(b->b[35])];
+    res += surround_arr[0][sfill2(b->b[19])] + surround_arr[0][sfill2(b->b[23])] + surround_arr[0][sfill2(b->b[30])] + surround_arr[0][sfill2(b->b[34])];
+    res += surround_arr[0][sfill1(b->b[20])] + surround_arr[0][sfill1(b->b[22])] + surround_arr[0][sfill1(b->b[31])] + surround_arr[0][sfill1(b->b[33])];
+    res += surround_arr[0][b->b[21]] + surround_arr[0][b->b[32]];
     return res;
 }
 
 inline int calc_surround1(const board *b){
     int res = 0;
-    for (int i = 0; i < b_idx_num; ++i)
+    for (int i = 0; i < 16; ++i)
         res += surround_arr[1][b->b[i]];
+    res += surround_arr[1][sfill5(b->b[16])] + surround_arr[1][sfill5(b->b[26])] + surround_arr[1][sfill5(b->b[27])] + surround_arr[1][sfill5(b->b[37])];
+    res += surround_arr[1][sfill4(b->b[17])] + surround_arr[1][sfill4(b->b[25])] + surround_arr[1][sfill4(b->b[28])] + surround_arr[1][sfill4(b->b[36])];
+    res += surround_arr[1][sfill3(b->b[18])] + surround_arr[1][sfill3(b->b[24])] + surround_arr[1][sfill3(b->b[29])] + surround_arr[1][sfill3(b->b[35])];
+    res += surround_arr[1][sfill2(b->b[19])] + surround_arr[1][sfill2(b->b[23])] + surround_arr[1][sfill2(b->b[30])] + surround_arr[1][sfill2(b->b[34])];
+    res += surround_arr[1][sfill1(b->b[20])] + surround_arr[1][sfill1(b->b[22])] + surround_arr[1][sfill1(b->b[31])] + surround_arr[1][sfill1(b->b[33])];
+    res += surround_arr[1][b->b[21]] + surround_arr[1][b->b[32]];
     return res;
 }
 
@@ -738,148 +811,36 @@ inline int calc_phase_idx(const board *b){
     return max(0, min(3, (b->n - 4) / 10 - 2));
 }
 
+inline double edge_2x(int phase_idx, const int b[], int x, int y){
+    return pattern_arr[phase_idx][7][pop_digit[b[x]][1] * pow3[9] + b[y] * pow3[1] + pop_digit[b[x]][6]];
+}
+
+inline double triangle(int phase_idx, const int b[], int w, int x, int y, int z){
+    return pattern_arr[phase_idx][8][b[w] / pow3[4] * pow3[6] + b[x] / pow3[5] * pow3[3] + b[y] / pow3[6] * pow3[1] + b[z] / pow3[7]];
+}
+
+inline double edge_block(int phase_idx, const int b[], int x, int y){
+    return pattern_arr[phase_idx][9][pop_digit[b[x]][0] * pow3[9] + pop_mid[b[x]][6][2] * pow3[5] + pop_digit[b[x]][7] * pow3[4] + pop_mid[b[y]][6][2]];
+}
+
+inline double cross(int phase_idx, const int b[], int x, int y, int z){
+    return pattern_arr[phase_idx][10][b[x] / pow3[4] * pow3[6] + b[y] / pow3[5] * pow3[3] + b[z] / pow3[5]] + 
+        pattern_arr[phase_idx][10][reverse_board[b[x]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b[y]]][7][4] * pow3[3] + pop_mid[reverse_board[b[z]]][7][4]];
+}
+
 inline void calc_pattern(const board *b, double arr[]){
-    int idx, phase_idx = calc_phase_idx(b);
-    double line2 = 0, line3 = 0, line4 = 0, diagonal5 = 0, diagonal6 = 0, diagonal7 = 0, diagonal8 = 0, edge_2x = 0, triangle = 0, edge_block = 0, cross = 0;
-
-    line2 += pattern_arr[phase_idx][0][b->b[1]];
-    line2 += pattern_arr[phase_idx][0][b->b[6]];
-    line2 += pattern_arr[phase_idx][0][b->b[9]];
-    line2 += pattern_arr[phase_idx][0][b->b[14]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[1]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[6]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[9]]];
-    line2 += pattern_arr[phase_idx][0][reverse_board[b->b[14]]];
-
-    line3 += pattern_arr[phase_idx][1][b->b[2]];
-    line3 += pattern_arr[phase_idx][1][b->b[5]];
-    line3 += pattern_arr[phase_idx][1][b->b[10]];
-    line3 += pattern_arr[phase_idx][1][b->b[13]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[2]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[5]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[10]]];
-    line3 += pattern_arr[phase_idx][1][reverse_board[b->b[13]]];
-
-    line4 += pattern_arr[phase_idx][2][b->b[3]];
-    line4 += pattern_arr[phase_idx][2][b->b[4]];
-    line4 += pattern_arr[phase_idx][2][b->b[11]];
-    line4 += pattern_arr[phase_idx][2][b->b[12]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[3]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[4]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[11]]];
-    line4 += pattern_arr[phase_idx][2][reverse_board[b->b[12]]];
-
-    diagonal5 += pattern_arr[phase_idx][3][b->b[18] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[24] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[29] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][b->b[35] / pow3[3]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[18]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[24]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[29]]][5]];
-    diagonal5 += pattern_arr[phase_idx][3][mod3[reverse_board[b->b[35]]][5]];
-
-    diagonal6 += pattern_arr[phase_idx][4][b->b[19] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[23] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[30] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][b->b[34] / pow3[2]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[19]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[23]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[30]]][6]];
-    diagonal6 += pattern_arr[phase_idx][4][mod3[reverse_board[b->b[34]]][6]];
-
-    diagonal7 += pattern_arr[phase_idx][5][b->b[20] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[22] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[31] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][b->b[33] / pow3[1]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[20]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[22]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[31]]][7]];
-    diagonal7 += pattern_arr[phase_idx][5][mod3[reverse_board[b->b[33]]][7]];
-
-    diagonal8 += pattern_arr[phase_idx][6][b->b[21]];
-    diagonal8 += pattern_arr[phase_idx][6][b->b[32]];
-    diagonal8 += pattern_arr[phase_idx][6][reverse_board[b->b[21]]];
-    diagonal8 += pattern_arr[phase_idx][6][reverse_board[b->b[32]]];
-
-    idx = pop_digit[b->b[1]][1] * pow3[9] + b->b[0] * pow3[1] + pop_digit[b->b[1]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[1]][6] * pow3[9] + reverse_board[b->b[0]] * pow3[1] + pop_digit[b->b[1]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[6]][1] * pow3[9] + b->b[7] * pow3[1] + pop_digit[b->b[6]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[6]][6] * pow3[9] + reverse_board[b->b[7]] * pow3[1] + pop_digit[b->b[6]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[9]][1] * pow3[9] + b->b[8] * pow3[1] + pop_digit[b->b[9]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[9]][6] * pow3[9] + reverse_board[b->b[8]] * pow3[1] + pop_digit[b->b[9]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[14]][1] * pow3[9] + b->b[15] * pow3[1] + pop_digit[b->b[14]][6];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-    idx = pop_digit[b->b[14]][6] * pow3[9] + reverse_board[b->b[15]] * pow3[1] + pop_digit[b->b[14]][1];
-    edge_2x += pattern_arr[phase_idx][7][idx];
-
-    idx = b->b[0] / pow3[4] * pow3[6] + b->b[1] / pow3[5] * pow3[3] + b->b[2] / pow3[6] * pow3[1] + b->b[3] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[0]] / pow3[4] * pow3[6] + reverse_board[b->b[1]] / pow3[5] * pow3[3] + reverse_board[b->b[2]] / pow3[6] * pow3[1] + reverse_board[b->b[3]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = b->b[7] / pow3[4] * pow3[6] + b->b[6] / pow3[5] * pow3[3] + b->b[5] / pow3[6] * pow3[1] + b->b[4] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[7]] / pow3[4] * pow3[6] + reverse_board[b->b[6]] / pow3[5] * pow3[3] + reverse_board[b->b[5]] / pow3[6] * pow3[1] + reverse_board[b->b[4]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = b->b[8] / pow3[4] * pow3[6] + b->b[9] / pow3[5] * pow3[3] + b->b[10] / pow3[6] * pow3[1] + b->b[11] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[8]] / pow3[4] * pow3[6] + reverse_board[b->b[9]] / pow3[5] * pow3[3] + reverse_board[b->b[10]] / pow3[6] * pow3[1] + reverse_board[b->b[11]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = b->b[15] / pow3[4] * pow3[6] + b->b[14] / pow3[5] * pow3[3] + b->b[13] / pow3[6] * pow3[1] + b->b[12] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-    idx = reverse_board[b->b[15]] / pow3[4] * pow3[6] + reverse_board[b->b[14]] / pow3[5] * pow3[3] + reverse_board[b->b[13]] / pow3[6] * pow3[1] + reverse_board[b->b[12]] / pow3[7];
-    triangle += pattern_arr[phase_idx][8][idx];
-
-    idx = pop_digit[b->b[0]][0] * pow3[9] + pop_mid[b->b[0]][6][2] * pow3[5] + pop_digit[b->b[0]][7] * pow3[4] + pop_mid[b->b[1]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[0]][7] * pow3[9] + pop_mid[reverse_board[b->b[0]]][6][2] * pow3[5] + pop_digit[b->b[0]][0] * pow3[4] + pop_mid[reverse_board[b->b[1]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[7]][0] * pow3[9] + pop_mid[b->b[7]][6][2] * pow3[5] + pop_digit[b->b[7]][7] * pow3[4] + pop_mid[b->b[6]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[7]][7] * pow3[9] + pop_mid[reverse_board[b->b[7]]][6][2] * pow3[5] + pop_digit[b->b[7]][0] * pow3[4] + pop_mid[reverse_board[b->b[6]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[8]][0] * pow3[9] + pop_mid[b->b[8]][6][2] * pow3[5] + pop_digit[b->b[8]][7] * pow3[4] + pop_mid[b->b[9]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[8]][7] * pow3[9] + pop_mid[reverse_board[b->b[8]]][6][2] * pow3[5] + pop_digit[b->b[8]][0] * pow3[4] + pop_mid[reverse_board[b->b[9]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[15]][0] * pow3[9] + pop_mid[b->b[15]][6][2] * pow3[5] + pop_digit[b->b[15]][7] * pow3[4] + pop_mid[b->b[14]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-    idx = pop_digit[b->b[15]][7] * pow3[9] + pop_mid[reverse_board[b->b[15]]][6][2] * pow3[5] + pop_digit[b->b[15]][0] * pow3[4] + pop_mid[reverse_board[b->b[14]]][6][2];
-    edge_block += pattern_arr[phase_idx][9][idx];
-
-    idx = b->b[21] / pow3[4] * pow3[6] + b->b[20] / pow3[5] * pow3[3] + b->b[22] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = b->b[21] / pow3[4] * pow3[6] + b->b[22] / pow3[5] * pow3[3] + b->b[20] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = b->b[32] / pow3[4] * pow3[6] + b->b[31] / pow3[5] * pow3[3] + b->b[33] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = b->b[32] / pow3[4] * pow3[6] + b->b[33] / pow3[5] * pow3[3] + b->b[31] / pow3[5];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[21]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[20]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[22]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[21]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[22]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[20]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[32]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[31]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[33]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
-    idx = reverse_board[b->b[32]] / pow3[4] * pow3[6] + pop_mid[reverse_board[b->b[33]]][7][4] * pow3[3] + pop_mid[reverse_board[b->b[31]]][7][4];
-    cross += pattern_arr[phase_idx][10][idx];
-
-    arr[0] = line2 / 8;
-    arr[1] = line3 / 8;
-    arr[2] = line4 / 8;
-    arr[3] = diagonal5 / 8;
-    arr[4] = diagonal6 / 8;
-    arr[5] = diagonal7 / 8;
-    arr[6] = diagonal8 / 4;
-    arr[7] = edge_2x / 8;
-    arr[8] = triangle / 8;
-    arr[9] = edge_block / 8;
-    arr[10] = cross / 8;
+    int phase_idx = calc_phase_idx(b);
+    arr[0] = pattern_arr[phase_idx][0][b->b[1]] + pattern_arr[phase_idx][0][b->b[6]] + pattern_arr[phase_idx][0][b->b[9]] + pattern_arr[phase_idx][0][b->b[14]];
+    arr[1] = pattern_arr[phase_idx][1][b->b[2]] + pattern_arr[phase_idx][1][b->b[5]] + pattern_arr[phase_idx][1][b->b[10]] + pattern_arr[phase_idx][1][b->b[13]];
+    arr[2] = pattern_arr[phase_idx][2][b->b[3]] + pattern_arr[phase_idx][2][b->b[4]] + pattern_arr[phase_idx][2][b->b[11]] + pattern_arr[phase_idx][2][b->b[12]];
+    arr[3] = pattern_arr[phase_idx][3][b->b[18] / pow3[3]] + pattern_arr[phase_idx][3][b->b[24] / pow3[3]] + pattern_arr[phase_idx][3][b->b[29] / pow3[3]] + pattern_arr[phase_idx][3][b->b[35] / pow3[3]];
+    arr[4] = pattern_arr[phase_idx][4][b->b[19] / pow3[2]] + pattern_arr[phase_idx][4][b->b[23] / pow3[2]] + pattern_arr[phase_idx][4][b->b[30] / pow3[2]] + pattern_arr[phase_idx][4][b->b[34] / pow3[2]];
+    arr[5] = pattern_arr[phase_idx][5][b->b[20] / pow3[1]] + pattern_arr[phase_idx][5][b->b[22] / pow3[1]] + pattern_arr[phase_idx][5][b->b[31] / pow3[1]] + pattern_arr[phase_idx][5][b->b[33] / pow3[1]];
+    arr[6] = pattern_arr[phase_idx][6][b->b[21]] + pattern_arr[phase_idx][6][b->b[32]];
+    arr[7] = edge_2x(phase_idx, b->b, 1, 0) + edge_2x(phase_idx, b->b, 6, 7) + edge_2x(phase_idx, b->b, 9, 8) + edge_2x(phase_idx, b->b, 14, 15);
+    arr[8] = triangle(phase_idx, b->b, 0, 1, 2, 3) + triangle(phase_idx, b->b, 7, 6, 5, 4) + triangle(phase_idx, b->b, 8, 9, 10, 11) + triangle(phase_idx, b->b, 15, 14, 13, 12);
+    arr[9] = edge_block(phase_idx, b->b, 0, 1) + edge_block(phase_idx, b->b, 7, 6) + edge_block(phase_idx, b->b, 8, 9) + edge_block(phase_idx, b->b, 15, 14);
+    arr[10] = cross(phase_idx, b->b, 21, 20, 22) + cross(phase_idx, b->b, 32, 31, 33);
 }
 
 inline int evaluate(const board *b){
@@ -916,7 +877,7 @@ inline void move_ordering(board *b){
     get_search(b->b, calc_hash(b->b) & search_hash_mask, f_search_table_idx, &l, &u);
     b->v = -max(l, u);
     if (u != -inf && l != -inf)
-        b->v += cache_exact;
+        b->v += cache_both;
     if (u != -inf || l != -inf)
         b->v += cache_hit;
     else
@@ -943,7 +904,7 @@ inline int last1(const board *b, bool skipped, int p0){
         rb.n = b->n;
         return -last1(&rb, true, p0);
     }
-    return score * sc_w / hw2;
+    return score > 0 ? sc_w : score == 0 ? 0 : -sc_w;
 }
 
 inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int p1){
@@ -951,7 +912,7 @@ inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int 
     board nb;
     bool passed = true;
     for (const int &idx: place_included[p0]){
-        if (move_arr[b->p][b->b[idx]][local_place[idx][p0]][0] || move_arr[b->p][b->b[idx]][local_place[idx][p0]][1]){
+        if (legal_arr[b->p][b->b[idx]][local_place[idx][p0]]){
             passed = false;
             nb = move(b, p0);
             alpha = max(alpha, -last1(&nb, false, p1));
@@ -961,7 +922,7 @@ inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int 
         }
     }
     for (const int &idx: place_included[p1]){
-        if (move_arr[b->p][b->b[idx]][local_place[idx][p1]][0] || move_arr[b->p][b->b[idx]][local_place[idx][p1]][1]){
+        if (legal_arr[b->p][b->b[idx]][local_place[idx][p1]]){
             passed = false;
             nb = move(b, p1);
             alpha = max(alpha, -last1(&nb, false, p0));
@@ -988,7 +949,7 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
     board nb;
     bool passed = true;
     for (const int &idx: place_included[p0]){
-        if (move_arr[b->p][b->b[idx]][local_place[idx][p0]][0] || move_arr[b->p][b->b[idx]][local_place[idx][p0]][1]){
+        if (legal_arr[b->p][b->b[idx]][local_place[idx][p0]]){
             passed = false;
             nb = move(b, p0);
             alpha = max(alpha, -last2(&nb, false, -beta, -alpha, p1, p2));
@@ -998,7 +959,7 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
         }
     }
     for (const int &idx: place_included[p1]){
-        if (move_arr[b->p][b->b[idx]][local_place[idx][p1]][0] || move_arr[b->p][b->b[idx]][local_place[idx][p1]][1]){
+        if (legal_arr[b->p][b->b[idx]][local_place[idx][p1]]){
             passed = false;
             nb = move(b, p1);
             alpha = max(alpha, -last2(&nb, false, -beta, -alpha, p0, p2));
@@ -1008,7 +969,7 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
         }
     }
     for (const int &idx: place_included[p2]){
-        if (move_arr[b->p][b->b[idx]][local_place[idx][p2]][0] || move_arr[b->p][b->b[idx]][local_place[idx][p2]][1]){
+        if (legal_arr[b->p][b->b[idx]][local_place[idx][p2]]){
             passed = false;
             nb = move(b, p2);
             alpha = max(alpha, -last2(&nb, false, -beta, -alpha, p0, p1));
@@ -1038,8 +999,7 @@ inline void pick_vacant(const board *b, int cells[]){
     }
 }
 
-int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
-    ++searched_nodes;
+int nega_alpha_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     if (b->n >= hw2 - 3){
         int cells[3];
         pick_vacant(b, cells);
@@ -1051,8 +1011,104 @@ int nega_alpha(const board *b, const long long strt, bool skipped, int depth, in
             return last1(b, skipped, cells[0]);
         return end_game(b);
     }
-    if (depth == 0)
-        return evaluate(b);
+    ++searched_nodes;
+    board nb;
+    bool passed = true;
+    for (const int &cell: vacant_lst){
+        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
+            for (const int &idx: place_included[cell]){
+                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+                    passed = false;
+                    nb = move(b, cell);
+                    alpha = max(alpha, -nega_alpha_final(&nb, strt, false, depth - 1, -beta, -alpha));
+                    if (beta <= alpha)
+                        return alpha;
+                    break;
+                }
+            }
+        }
+    }
+    if (passed){
+        if (skipped)
+            return end_game(b);
+        for (int i = 0; i < b_idx_num; ++i)
+            nb.b[i] = b->b[i];
+        nb.p = 1 - b->p;
+        nb.n = b->n;
+        return -nega_alpha_final(&nb, strt, true, depth, -beta, -alpha);
+    }
+    return alpha;
+}
+
+int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int all_depth, int alpha, int beta){
+    if (tim() - strt > final_tl)
+        return -inf;
+    if (all_depth >= 13){
+        if (mpc_higher(b, skipped, depth, 300))
+            return sc_w;
+        if (mpc_lower(b, skipped, depth, -300))
+            return -sc_w;
+    }
+    if (b->n >= hw2 - 3){
+        int cells[3];
+        pick_vacant(b, cells);
+        if (b->n == hw2 - 3)
+            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
+        if (b->n == hw2 - 2)
+            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
+        if (b->n == hw2 - 1)
+            return last1(b, skipped, cells[0]);
+        return end_game(b);
+    }
+    if (depth <= 7)
+        return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
+    ++searched_nodes;
+    vector<board> nb;
+    int canput = 0;
+    for (const int &cell: vacant_lst){
+        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
+            for (const int &idx: place_included[cell]){
+                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+                    nb.push_back(move(b, cell));
+                    nb[canput].v = -calc_canput_exact(&(nb[canput]));
+                    ++canput;
+                    break;
+                }
+            }
+        }
+    }
+    if (canput == 0){
+        if (skipped)
+            return end_game(b);
+        board rb;
+        for (int i = 0; i < b_idx_num; ++i)
+            rb.b[i] = b->b[i];
+        rb.p = 1 - b->p;
+        rb.n = b->n;
+        return -nega_alpha_ordering_final(&rb, strt, true, depth, all_depth, -beta, -alpha);
+    }
+    if (canput >= 2)
+        sort(nb.begin(), nb.end());
+    int g;
+    for (const board &nnb: nb){
+        g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, all_depth, -beta, -alpha);
+        if (g == inf)
+            return -inf;
+        alpha = max(alpha, g);
+        if (beta <= alpha)
+            return alpha;
+    }
+    return alpha;
+}
+
+int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
+    ++searched_nodes;
+    if (depth == 0){
+        if (b->n < hw2)
+            return evaluate(b);
+        else
+            return end_game(b);
+    }
     board nb;
     bool passed = true;
     int g, v = -inf;
@@ -1064,9 +1120,9 @@ int nega_alpha(const board *b, const long long strt, bool skipped, int depth, in
                     nb = move(b, cell);
                     g = -nega_alpha(&nb, strt, false, depth - 1, -beta, -alpha);
                     alpha = max(alpha, g);
-                    v = max(v, g);
                     if (beta <= alpha)
                         return alpha;
+                    v = max(v, g);
                     break;
                 }
             }
@@ -1089,25 +1145,18 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
     if (tim() - strt > tl)
         return -inf;
     ++searched_nodes;
-    if (b->n >= hw2 - 3){
-        int cells[3];
-        pick_vacant(b, cells);
-        if (b->n == hw2 - 3)
-            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
-        if (b->n == hw2 - 2)
-            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
-        if (b->n == hw2 - 1)
-            return last1(b, skipped, cells[0]);
-        return end_game(b);
+    if (depth == 0){
+        if (b->n < hw2)
+            return evaluate(b);
+        else
+            return end_game(b);
     }
+    if (mpc_higher(b, skipped, depth, beta + epsilon))
+        return beta + epsilon;
+    if (mpc_lower(b, skipped, depth, alpha - epsilon))
+        return alpha - epsilon;
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
-    if (b->n < hw2 - 16){
-        if (mpc_higher(b, skipped, depth, beta))
-            return beta + epsilon;
-        if (mpc_lower(b, skipped, depth, alpha))
-            return alpha - epsilon;
-    }
     int hash = (int)(calc_hash(b->b) & search_hash_mask);
     int l, u;
     get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
@@ -1150,8 +1199,8 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
     if (canput >= 2)
         sort(nb.begin(), nb.end());
     int first_alpha = alpha, g, v = -inf;
-    for (int i = 0; i < canput; ++i){
-        g = -nega_alpha_ordering(&nb[i], strt, false, depth - 1, -beta, -alpha);
+    for (const board &nnb: nb){
+        g = -nega_alpha_ordering(&nnb, strt, false, depth - 1, -beta, -alpha);
         if (g == inf)
             return -inf;
         if (beta <= g){
@@ -1162,7 +1211,7 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
         alpha = max(alpha, g);
         v = max(v, g);
     }
-    if (v <= first_alpha)
+    if (v < first_alpha)
         register_search(1 - f_search_table_idx, b->b, hash, l, v);
     else
         register_search(1 - f_search_table_idx, b->b, hash, v, v);
@@ -1173,16 +1222,11 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
     if (tim() - strt > tl)
         return -inf;
     ++searched_nodes;
-    if (b->n >= hw2 - 3){
-        int cells[3];
-        pick_vacant(b, cells);
-        if (b->n == hw2 - 3)
-            return last3(b, skipped, alpha, beta, cells[0], cells[1], cells[2]);
-        if (b->n == hw2 - 2)
-            return last2(b, skipped, alpha, beta, cells[0], cells[1]);
-        if (b->n == hw2 - 1)
-            return last1(b, skipped, cells[0]);
-        return end_game(b);
+    if (depth == 0){
+        if (b->n < hw2)
+            return evaluate(b);
+        else
+            return end_game(b);
     }
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
@@ -1227,29 +1271,22 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
     }
     if (canput >= 2)
         sort(nb.begin(), nb.end());
-    int v, g, first_alpha = alpha;
-    g = -nega_scout(&nb[0], strt, false, depth - 1, -beta, -alpha);
-    if (g == inf)
-        return -inf;
-    if (beta <= g){
-        if (l < g)
-            register_search(1 - f_search_table_idx, b->b, hash, g, u);
-        return g;
-    }
-    v = g;
-    alpha = max(alpha, g);
-    for (int i = 1; i < canput; ++i){
-        g = -nega_alpha_ordering(&nb[i], strt, false, depth - 1, -alpha - epsilon, -alpha);
-        if (g == inf)
-            return -inf;
-        if (beta <= g){
-            if (l < g)
-                register_search(1 - f_search_table_idx, b->b, hash, g, u);
-            return g;
+    int g = alpha, v = -inf, first_alpha = alpha;
+    for (const board &nnb: nb){
+        if (&nnb - &nb[0]){
+            g = -nega_alpha_ordering(&nnb, strt, false, depth - 1, -alpha - epsilon, -alpha);
+            if (g == inf)
+                return -inf;
+            if (beta <= g){
+                if (l < g)
+                    register_search(1 - f_search_table_idx, b->b, hash, g, u);
+                return g;
+            }
+            v = max(v, g);
         }
         if (alpha <= g){
-            alpha = g;
-            g = -nega_scout(&nb[i], strt, false, depth - 1, -beta, -alpha);
+            alpha = max(alpha, g);
+            g = -nega_scout(&nnb, strt, false, depth - 1, -beta, -alpha);
             if (g == inf)
                 return -inf;
             if (beta <= g){
@@ -1258,10 +1295,10 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
                 return g;
             }
             alpha = max(alpha, g);
+            v = max(v, g);
         }
-        v = max(v, g);
     }
-    if (v <= first_alpha)
+    if (v < first_alpha)
         register_search(1 - f_search_table_idx, b->b, hash, l, v);
     else
         register_search(1 - f_search_table_idx, b->b, hash, v, v);
@@ -1270,7 +1307,7 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
 
 int mtd(const board *b, const long long strt, bool skipped, int depth, int l, int u){
     int g = evaluate(b), beta;
-    while (u - l > 100){
+    while (u - l > mtd_threshold){
         beta = g;
         g = nega_alpha_ordering(b, strt, skipped, depth, beta - epsilon, beta);
         if (g == -inf)
@@ -1304,11 +1341,13 @@ inline search_result search(const board b, long long strt){
     int tmp_policy, i;
     int alpha, beta, g, value;
     searched_nodes = 0;
+    hash_conf = 0;
+    hash_get = 0;
     bool break_flag = false;
     int order_l, order_u;
-    while (tim() - strt < tl){
-        alpha = -2 * sc_w;
-        beta = 2 * sc_w;
+    while (tim() - strt < tl / 2){
+        alpha = -sc_w - epsilon;
+        beta = sc_w + epsilon;
         search_hash_table_init(1 - f_search_table_idx);
         for (i = 0; i < canput; ++i){
             get_search(nb[i].b, calc_hash(nb[i].b) & search_hash_mask, f_search_table_idx, &order_l, &order_u);
@@ -1354,18 +1393,80 @@ inline search_result search(const board b, long long strt){
             policy = tmp_policy;
             value = alpha;
             res_depth = depth + 1;
-            cerr << "depth: " << depth + 1 << " time: " << tim() - strt << " policy: " << policy << " value: " << alpha << " nodes: " << searched_nodes << " nps: " << (long long)searched_nodes * 1000 / max(1LL, tim() - strt) << endl;
+            cerr << "depth: " << depth + 1 << " time: " << tim() - strt << " policy: " << policy << " value: " << alpha << " nodes: " << searched_nodes << " nps: " << (long long)searched_nodes * 1000 / max(1LL, tim() - strt) << " get: " << hash_get << " conf: " << hash_conf << endl;
             ++depth;
         }
-        if (b.n + depth > hw2){
-            cerr << "game end" << endl;
+        if (depth + 1 >= hw2 - b.n)
             break;
-        }
     }
     search_result res;
     res.policy = policy;
     res.value = value;
     res.depth = res_depth;
+    res.nps = searched_nodes * 1000 / max(1LL, tim() - strt);
+    return res;
+}
+
+inline search_result win_read(const board b, long long strt){
+    vector<board> nb;
+    for (const int &cell: vacant_lst){
+        for (const int &idx: place_included[cell]){
+            if (move_arr[b.p][b.b[idx]][local_place[idx][cell]][0] || move_arr[b.p][b.b[idx]][local_place[idx][cell]][1]){
+                cerr << cell << " ";
+                nb.push_back(move(&b, cell));
+                break;
+            }
+        }
+    }
+    cerr << endl;
+    int canput = nb.size();
+    cerr << "canput: " << canput << endl;
+    int depth;
+    int tmp_policy, i;
+    int alpha, beta, g;
+    searched_nodes = 0;
+    bool timeout_flag = false;
+    search_result res;
+    depth = hw2_m1 - b.n;
+    alpha = -epsilon;
+    beta = sc_w;
+    for (i = 0; i < canput; ++i)
+        nb[i].v = -calc_canput_exact(&nb[i]);
+    if (canput >= 2)
+        sort(nb.begin(), nb.end());
+    for (i = 0; i < canput; ++i){
+        g = -nega_alpha_ordering_final(&nb[i], strt, 0, depth, depth, -beta, -alpha);
+        if (g == inf){
+            timeout_flag = true;
+            break;
+        }
+        if (alpha < g || i == 0){
+            alpha = g;
+            tmp_policy = nb[i].policy;
+        }
+        if (alpha >= sc_w)
+            break;
+    }
+    if (alpha < 0)
+        alpha = -sc_w;
+    if (timeout_flag){
+        cerr << "win read timeout" << endl;
+        res.policy = -1;
+        res.value = -inf;
+    } else{
+        cerr << "win read depth: " << depth + 1 << " time: " << tim() - strt << " policy: " << tmp_policy << " value: " << alpha << " nodes: " << searched_nodes << " nps: " << (long long)searched_nodes * 1000 / max(1LL, tim() - strt) << endl;
+        res.policy = tmp_policy;
+        res.value = alpha;
+    }
+    res.depth = depth + 1;
+    res.nps = searched_nodes * 1000 / max(1LL, tim() - strt);
+    return res;
+}
+
+inline string coord_str(int policy){
+    string res;
+    res += (char)(policy % hw + 97);
+    res += to_string(policy / hw + 1);
     return res;
 }
 
@@ -1409,14 +1510,18 @@ inline int input_board(int (&board)[b_idx_num]){
 }
 
 inline double calc_result_value(int v){
-    return (double)v * 64.0 / sc_w; 
+    return (double)round((double)v * 64.0 / sc_w * 10) / 10;
+}
+
+inline double show_nps(long long nps){
+    return (double)nps / 1000000;
 }
 
 int main(){
     int policy, n_stones, ai_player;
     board b;
     long long strt = tim();
-    search_result result;
+    search_result result, result_win;
     cerr << "initializing" << endl;
     init_pow();
     init_mod3();
@@ -1426,6 +1531,7 @@ int main(){
     init_included();
     init_pop_digit();
     init_mpc();
+    init_search_hash_table();
     //init_book();
     cerr << "book initialized in " << tim() - strt << " ms" << endl;
     init_evaluation();
@@ -1437,11 +1543,8 @@ int main(){
         cin >> ai_player;
         n_stones = input_board(b.b);
         strt = tim();
-        cerr << "n_stones: " << n_stones << endl;
-        cerr << n_stones - 4 << " moves" << endl;
         b.n = n_stones;
         b.p = ai_player;
-        cerr << "value: " << evaluate(&b) << endl;
         result = search(b, strt);
         cout << result.policy / hw << " " << result.policy % hw << endl;
     }
