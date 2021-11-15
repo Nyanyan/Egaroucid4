@@ -16,9 +16,9 @@ https://github.com/Nyanyan/Egaroucid
 
 https://github.com/Nyanyan/Egaroucid3
 
-![img0](https://github.com/Nyanyan/Egaroucid4/blob/master/img1.png)
+![img0](https://github.com/Nyanyan/Egaroucid4/blob/main/img1.png)
 
-![img0](https://github.com/Nyanyan/Egaroucid4/blob/master/img2.png)
+![img0](https://github.com/Nyanyan/Egaroucid4/blob/main/img2.png)
 
 
 
