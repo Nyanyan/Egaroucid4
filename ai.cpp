@@ -32,7 +32,6 @@ using namespace std;
 #define book_hash_table_size 8192
 constexpr int book_hash_mask = book_hash_table_size - 1;
 #define book_stones 55
-#define ln_repair_book 27
 
 #define search_hash_table_size 1048576
 constexpr int search_hash_mask = search_hash_table_size - 1;
@@ -1533,8 +1532,8 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 14;
-    final_depth = 16;
+    depth = 16;
+    final_depth = 18;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;

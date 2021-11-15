@@ -1,12 +1,20 @@
 from random import randrange
 import subprocess
 import sys
+from tqdm import trange
 
 hw = 8
 hw2 = 64
 board_index_num = 38
 dy = [0, 1, 0, -1, 1, 1, -1, -1]
 dx = [1, 0, -1, 0, 1, -1, 1, -1]
+
+def digit(n, r):
+    n = str(n)
+    l = len(n)
+    for i in range(r - l):
+        n = '0' + n
+    return n
 
 def empty(grid, y, x):
     return grid[y][x] == -1 or grid[y][x] == 2
@@ -164,63 +172,59 @@ with open('third_party/records3.txt', 'r') as f:
 ln_tactic = len(tactic)
 
 ais = []
+evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
 def init_ai():
     global ais
     ais = [subprocess.Popen('./ai2.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) for _ in range(2)]
-    ais[0].stdin.write('param.txt\n'.encode('utf-8'))
-    ais[1].stdin.write('param_new.txt\n'.encode('utf-8'))
+    ais[0].stdin.write('0\n'.encode('utf-8'))
+    ais[1].stdin.write('1\n'.encode('utf-8'))
 
 init_ai()
 
 def self_play():
-    old_win = 0
-    new_win = 0
-    draw_num = 0
     play_num = int(input())
-    for _ in range(play_num):
-        for i in range(2): # 0: old-black, new-white  1: new_black, old_white
-            print('=', end='', file=sys.stderr, flush=True)
-            rv = reversi()
-            tactic_idx = randrange(0, ln_tactic)
-            for y, x in tactic[tactic_idx]:
-                rv.check_pass()
-                rv.check_pass()
-                rv.move(y, x)
-            break_flag = False
-            while True:
-                if rv.check_pass() and rv.check_pass():
-                    break
-                ai_idx = (rv.player + i) % 2
-                stdin_str = str(rv.player) + '\n'
+    start_num = int(input())
+    for num in trange(play_num):
+        #print('=', end='', file=sys.stderr, flush=True)
+        rv = reversi()
+        tactic_idx = randrange(0, ln_tactic)
+        for y, x in tactic[tactic_idx]:
+            rv.check_pass()
+            rv.check_pass()
+            rv.move(y, x)
+        while True:
+            if rv.check_pass() and rv.check_pass():
+                break
+            try:
+                grid_str = ''
                 for yy in range(hw):
                     for xx in range(hw):
-                        stdin_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
-                    stdin_str += '\n'
-                #print(stdin_str)
-                try:
-                    ais[ai_idx].stdin.write(stdin_str.encode('utf-8'))
-                    ais[ai_idx].stdin.flush()
-                    y, x = [int(elem) for elem in ais[ai_idx].stdout.readline().split()]
-                except:
-                    print('err')
-                    break_flag = True
-                    for j in range(2):
-                        try:
-                            ais[j].kill()
-                        except:
-                            continue
-                    init_ai()
-                    break
-                rv.move(y, x)
-            if not break_flag:
-                if rv.nums[i] > rv.nums[(i + 1) % 2]: # old won
-                    old_win += 1
-                elif rv.nums[i] < rv.nums[(i + 1) % 2]: # new won
-                    new_win += 1
-                else:
-                    draw_num += 1
-    print(play_num * 2, old_win, new_win, draw_num)
+                        grid_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
+                    grid_str += '\n'
+                ais[rv.player].stdin.write(grid_str.encode('utf-8'))
+                ais[rv.player].stdin.flush()
+                y, x, score = ais[rv.player].stdout.readline().split()
+                evaluate.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
+                evaluate.stdin.flush()
+                add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
+                y = int(y)
+                x = int(x)
+                score = float(score)
+                if rv.player == 1:
+                    score = -score 
+                with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
+                    f.write(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score) + '\n')
+            except:
+                print('err')
+                break_flag = True
+                for j in range(2):
+                    try:
+                        ais[j].kill()
+                    except:
+                        continue
+                init_ai()
+                break
+            rv.move(y, x)
 
-while True:
-    self_play()
+self_play()
