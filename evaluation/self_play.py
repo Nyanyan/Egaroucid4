@@ -167,9 +167,12 @@ def record_translate(record):
         res.append([y, x])
     return res
 
-with open('third_party/records3.txt', 'r') as f:
-    tactic = [record_translate(elem) for elem in f.read().splitlines()]
+tactic = []
+for year in range(2000, 2019 + 1):
+    with open('third_party/records/2019.csv', 'r', encoding='utf-8-sig') as f:
+        tactic.extend(record_translate(elem) for elem in f.read().splitlines())
 ln_tactic = len(tactic)
+print(ln_tactic)
 
 ais = []
 evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -189,10 +192,11 @@ def self_play():
         #print('=', end='', file=sys.stderr, flush=True)
         rv = reversi()
         tactic_idx = randrange(0, ln_tactic)
-        for y, x in tactic[tactic_idx]:
+        for y, x in tactic[tactic_idx][:min(len(tactic[tactic_idx]), 20)]:
             rv.check_pass()
             rv.check_pass()
             rv.move(y, x)
+        data = []
         while True:
             if rv.check_pass() and rv.check_pass():
                 break
@@ -212,9 +216,8 @@ def self_play():
                 x = int(x)
                 score = float(score)
                 if rv.player == 1:
-                    score = -score 
-                with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
-                    f.write(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score) + '\n')
+                    score = -score
+                data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score))
             except:
                 print('err')
                 break_flag = True
@@ -226,5 +229,14 @@ def self_play():
                 init_ai()
                 break
             rv.move(y, x)
+        result = rv.nums[0] - rv.nums[1]
+        vacant = hw2 - rv.nums[0] - rv.nums[1]
+        if result > 0:
+            result += vacant
+        elif result < 0:
+            result -= vacant
+        with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
+            for datum in data:
+                f.write(datum + ' ' + str(result) + '\n')
 
 self_play()

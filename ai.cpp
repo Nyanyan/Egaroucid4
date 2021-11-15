@@ -116,7 +116,7 @@ int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
 const double mpct[6] = {1.6,1.7,1.8,1.8,2.5,2.0};
-const double mpcsd[6] = {744.8936677465724, 365.9713735469705, 446.71116592780777, 582.1405787620781, 664.4068745204859, 527.4333295657622};
+const double mpcsd[6] = {689.6319196947626, 358.2146368431821, 436.34554803500885, 581.9810372985147, 645.7568578518162, 586.1487681953059};
 int mpctsd[6];
 
 vector<int> vacant_lst;
@@ -656,14 +656,16 @@ inline void register_search(const int table_idx, const int *key, int hash, int l
 }
 
 inline void get_search(const int *key, const int hash, const int table_idx, int *l, int *u){
-    if (search_replace_table[table_idx][hash].reg && compare_key(key, search_replace_table[table_idx][hash].k)){
-        *l = search_replace_table[table_idx][hash].l;
-        *u = search_replace_table[table_idx][hash].u;
-        ++hash_get;
-    } else{
-        *l = -inf;
-        *u = -inf;
+    if (search_replace_table[table_idx][hash].reg){
+        if (compare_key(key, search_replace_table[table_idx][hash].k)){
+            *l = search_replace_table[table_idx][hash].l;
+            *u = search_replace_table[table_idx][hash].u;
+            ++hash_get;
+            return;
+        }
     }
+    *l = -inf;
+    *u = -inf;
 }
 
 inline int calc_canput_exact(const board *b){
@@ -1571,7 +1573,7 @@ int main(){
             if (policy != -1){
                 b = move(&b, policy);
                 ++n_stones;
-                result = search(b, strt, depth);
+                result = search(b, strt, depth - 1);
                 print_result(policy, -result.value);
                 continue;
             }

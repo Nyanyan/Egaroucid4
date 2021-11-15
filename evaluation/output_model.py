@@ -37,8 +37,9 @@ for name in layer_names:
     names.append(name + '_dense0')
     names.append(name + '_dense1')
     names.append(name + '_out')
-#names.append('add_dense0')
+names.append('add_dense0')
 names.append('add_dense1')
+names.append('all_dense0')
 
 with open('learned_data/' + sys.argv[2], 'w') as f:
     for name in names:

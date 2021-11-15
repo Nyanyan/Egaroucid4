@@ -27,10 +27,9 @@ for stone_strt in [20, 30, 40, 50]:
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 10000 #126000
+    game_num = 50000
     test_ratio = 0.1
-    n_epochs = 200
-    one_board_num = 1
+    n_epochs = 10
 
 
     line2_idx = [[8, 9, 10, 11, 12, 13, 14, 15], [1, 9, 17, 25, 33, 41, 49, 57], [6, 14, 22, 30, 38, 46, 54, 62], [48, 49, 50, 51, 52, 53, 54, 55]] # line2
@@ -57,7 +56,7 @@ for stone_strt in [20, 30, 40, 50]:
     for pattern in deepcopy(diagonal7_idx):
         diagonal7_idx.append(list(reversed(pattern)))
 
-    diagonal8_idx = [[0, 9, 18, 27, 36, 45, 54, 63], [0, 9, 18, 27, 36, 45, 54, 63], [7, 14, 21, 28, 35, 42, 49, 56], [7, 14, 21, 28, 35, 42, 49, 56]]
+    diagonal8_idx = [[0, 9, 18, 27, 36, 45, 54, 63], [7, 14, 21, 28, 35, 42, 49, 56]]
     for pattern in deepcopy(diagonal8_idx):
         diagonal8_idx.append(list(reversed(pattern)))
 
@@ -110,24 +109,13 @@ for stone_strt in [20, 30, 40, 50]:
     ]
 
     pattern_idx = [line2_idx, line3_idx, line4_idx, diagonal5_idx, diagonal6_idx, diagonal7_idx, diagonal8_idx, edge_2x_idx, triangle_idx, edge_block, cross_idx]
-    all_data = [[] for _ in range(len(pattern_idx))]
-    additional_data = []
+    ln_in = sum([len(elem) for elem in pattern_idx]) + 1
+    all_data = [[] for _ in range(ln_in)]
     all_labels = []
-
-    def calc_idx(board, patterns):
-        res = []
-        for pattern in patterns:
-            tmp = 0
-            for elem in pattern:
-                tmp *= 3
-                tmp += 0 if board[elem] == '0' else 1 if board[elem] == '1' else 2
-            res.append(tmp)
-        return res
 
     def make_lines(board, patterns):
         res = []
-        for _ in range(one_board_num):
-            pattern = patterns[randrange(0, 8)]
+        for pattern in patterns:
             tmp = []
             for elem in pattern:
                 tmp.append(1.0 if board[elem] == '0' else 0.0)
@@ -160,51 +148,58 @@ for stone_strt in [20, 30, 40, 50]:
         #for _ in range(10000):
         #    datum = data[randrange(len(data))]
         for datum in data:
-            board, player, v1, v2, v3, score = datum.split()
-            v1 = float(v1)
-            v2 = float(v2)
-            v3 = float(v3)
-            if min_n_stones <= calc_n_stones(board) < max_n_stones:
-                score = float(score)
+            #board, player, v1, v2, v3, score, result = datum.split()
+            board, player, v1, v2, v3, result = datum.split()
+            n_stones = calc_n_stones(board)
+            if min_n_stones <= n_stones < max_n_stones:
+                v1 = float(v1)
+                v2 = float(v2)
+                v3 = float(v3)
+                #score = float(score)
+                result = float(result)
                 #score = tanh(score / 20)
-                score = score / 64
+                #score = score / 64
+                result = result / 64
+                idx = 0
                 for i in range(len(pattern_idx)):
                     lines = make_lines(board, pattern_idx[i])
                     for line in lines:
-                        all_data[i].append(line)
-                '''
-                if v1 >= 0:
-                    additional_data.append([v1 / 30.0, 0.0])
-                else:
-                    additional_data.append([0.0, -v1 / 30.0])
-                '''
-                additional_data.append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
-                #additional_data.append([v2 / 30, v3 / 30])
-                for _ in range(one_board_num):
-                    all_labels.append(score)
+                        all_data[idx].append(line)
+                        idx += 1
+                all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
+                all_labels.append(result)
 
-    def my_loss(y_true, y_pred):
-        return tf.keras.backend.square(y_true - y_pred) / (1.1 + y_true * y_pred)
-        #return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
-
-    x = [None for _ in range(len(pattern_idx))]
+    x = [None for _ in range(ln_in)]
     ys = []
     names = ['line2', 'line3', 'line4', 'diagonal5', 'diagonal6', 'diagonal7', 'diagonal8', 'edge2X', 'triangle', 'edgeblock', 'cross']
+    idx = 0
     for i in range(len(pattern_idx)):
-        x[i] = Input(shape=(len(pattern_idx[i][0]) * 2), name=names[i] + '_in')
-        y = Dense(16, name=names[i] + '_dense0')(x[i])
-        y = LeakyReLU(alpha=0.01)(y)
-        y = Dense(16, name=names[i] + '_dense1')(y)
-        y = LeakyReLU(alpha=0.01)(y)
-        y = Dense(1, name=names[i] + '_out')(y)
-        y = LeakyReLU(alpha=0.01)(y)
-        ys.append(y)
+        layers = []
+        layers.append(Dense(16, name=names[i] + '_dense0'))
+        layers.append(LeakyReLU(alpha=0.01))
+        layers.append(Dense(16, name=names[i] + '_dense1'))
+        layers.append(LeakyReLU(alpha=0.01))
+        layers.append(Dense(1, name=names[i] + '_out'))
+        layers.append(LeakyReLU(alpha=0.01))
+        add_elems = []
+        for j in range(len(pattern_idx[i])):
+            x[idx] = Input(shape=len(pattern_idx[i][0]) * 2, name=names[i] + '_in_' + str(j))
+            tmp = x[idx]
+            for layer in layers:
+                tmp = layer(tmp)
+            add_elems.append(tmp)
+            idx += 1
+        ys.append(Add()(add_elems))
     y_pattern = Concatenate(axis=-1)(ys)
-    x.append(Input(shape=(3), name='additional_input'))
-    x_all = Concatenate(axis=-1)([y_pattern, x[len(pattern_idx)]])
-    #y_all = GaussianNoise(1e-2)(x_all)
-    #y_all = Dense(1, name='add_dense1')(y_all)
-    y_all = Dense(1, name='add_dense1')(x_all)
+    x[idx] = Input(shape=3, name='additional_input')
+    y_add = Dense(8, name='add_dense0')(x[idx])
+    y_add = LeakyReLU(alpha=0.01)(y_add)
+    y_add = Dense(8, name='add_dense1')(y_add)
+    y_add = LeakyReLU(alpha=0.01)(y_add)
+    y_all = Concatenate(axis=-1)([y_pattern, y_add])
+    #y_all = Dense(8, name='all_dense0')(y_all)
+    #y_all = LeakyReLU(alpha=0.01)(y_all)
+    y_all = Dense(1, name='all_dense0')(y_all)
 
     model = Model(inputs=x, outputs=y_all)
 
@@ -218,8 +213,6 @@ for stone_strt in [20, 30, 40, 50]:
         collect_data(i)
     len_data = len(all_labels)
     print(len_data)
-
-    all_data.append(additional_data)
 
     tmp_data = deepcopy(all_data)
     tmp_labels = deepcopy(all_labels)

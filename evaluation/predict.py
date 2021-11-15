@@ -42,7 +42,7 @@ diagonal7_idx = [[1, 10, 19, 28, 37, 46, 55], [48, 41, 34, 27, 20, 13, 6], [62, 
 for pattern in deepcopy(diagonal7_idx):
     diagonal7_idx.append(list(reversed(pattern)))
 
-diagonal8_idx = [[0, 9, 18, 27, 36, 45, 54, 63], [0, 9, 18, 27, 36, 45, 54, 63], [7, 14, 21, 28, 35, 42, 49, 56], [7, 14, 21, 28, 35, 42, 49, 56]]
+diagonal8_idx = [[0, 9, 18, 27, 36, 45, 54, 63], [7, 14, 21, 28, 35, 42, 49, 56]]
 for pattern in deepcopy(diagonal8_idx):
     diagonal8_idx.append(list(reversed(pattern)))
 
@@ -95,18 +95,18 @@ cross_idx = [
 ]
 
 pattern_idx = [line2_idx, line3_idx, line4_idx, diagonal5_idx, diagonal6_idx, diagonal7_idx, diagonal8_idx, edge_2x_idx, triangle_idx, edge_block, cross_idx]
-all_data = [[] for _ in range(len(pattern_idx))]
-additional_data = []
+ln_in = sum([len(elem) for elem in pattern_idx]) + 1
+all_data = [[] for _ in range(ln_in)]
 all_labels = []
-all_raw_data = []
 
-def calc_idx(board, patterns):
+def make_lines(board, patterns):
     res = []
     for pattern in patterns:
-        tmp = 0
+        tmp = []
         for elem in pattern:
-            tmp *= 3
-            tmp += 0 if board[elem] == '0' else 1 if board[elem] == '1' else 2
+            tmp.append(1.0 if board[elem] == '0' else 0.0)
+        for elem in pattern:
+            tmp.append(1.0 if board[elem] == '1' else 0.0)
         res.append(tmp)
     return res
 
@@ -134,50 +134,38 @@ def calc_n_stones(board):
         res += int(elem != '.')
     return res
 
+
 # player = 1 ans = 26
 board = '...............0..0110.0...11000..000000...11110...111....1..1..'
 v1 = -11
 v2 = 27
 v3 = 29
-
+'''
+# player = 0 ans = 26
+board = '..................0110.....101.....1001....100..................'
+v1 = 12
+v2 = 20
+v3 = 24
+'''
+idx = 0
 for i in range(len(pattern_idx)):
     lines = make_lines(board, pattern_idx[i])
     for line in lines:
-        all_data[i].append(line)
-for _ in range(8):
-    additional_data.append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
-all_raw_data.append(board)
+        all_data[idx].append(line)
+        idx += 1
+all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
 
-def my_loss(y_true, y_pred):
-    return tf.keras.backend.square(y_true - y_pred) * (tf.keras.backend.exp(-tf.keras.backend.abs(10.0 * y_true)) + 1)
-
-model = load_model('learned_data/20_30.h5', custom_objects={'my_loss': my_loss})
-pattern_out = Model(inputs=model.input, outputs=model.get_layer('concatenate_1').output)
-
-#model.summary()
-#plot_model(model, to_file='model.png', show_shapes=True)
-
-len_data = len(all_labels)
-print(len_data)
-all_data = [np.array(arr) for arr in all_data]
-all_data.append(np.array(additional_data))
-all_labels = np.array(all_labels)
+model = load_model('learned_data/20_30.h5')
+concat = Model(inputs=model.input, outputs=model.get_layer('concatenate_1').output)
 
 idx = 0
 
-print(all_raw_data[idx])
 in_data = [np.array([all_data[i][idx]]) for i in range(len(all_data))]
-print(in_data)
-prediction = model.predict(all_data)
-print(prediction)
-print(sum(prediction[i][0] for i in range(len(all_data[0]))) * 6400 / len(all_data[0]))
+#print(all_data)
+prediction = model.predict(in_data)
+print(prediction[0][0] * 6400)
 
-prediction = pattern_out.predict(all_data)
-print(prediction)
-#print(sum(prediction[i][0] for i in range(len(all_data[0]))) / len(all_data[0]))
-#print(sum(prediction[i][0] for i in range(len(all_data[0]))))
-for i in range(14):
-    tmp = 0
-    for j in range(8):
-        tmp += prediction[j][i]
-    print(tmp / 8)
+prediction = concat.predict(in_data)
+#print(prediction)
+for elem in prediction[0]:
+    print(float(elem))
