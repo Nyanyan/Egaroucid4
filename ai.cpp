@@ -1459,8 +1459,7 @@ inline search_result final_search(const board b, long long strt){
     for (i = 1; i < canput; ++i){
         g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - epsilon, -alpha);
         if (alpha < g){
-            alpha = g;
-            g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -alpha);
+            g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -g);
             if (alpha < g){
                 alpha = g;
                 tmp_policy = nb[i].policy;
@@ -1534,8 +1533,8 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 15;
-    final_depth = 18;
+    depth = 14;
+    final_depth = 16;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;

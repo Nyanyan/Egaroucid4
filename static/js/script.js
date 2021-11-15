@@ -27,7 +27,7 @@ var graph = new Chart(ctx, {
     labels: [],
     datasets: [
         {
-        label: "Probability of AI's win",
+        label: "Prediction of stone difference",
         data: [],
         fill: false,
         borderColor: "rgb(0,0,0)",
