@@ -40,7 +40,7 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 #define n_patterns 11
 #define n_dense0 16
 #define n_dense1 16
-#define n_add_input 3
+#define n_add_input 4
 #define n_add_dense0 8
 #define n_add_dense1 8
 #define n_all_input 19
@@ -130,7 +130,7 @@ search_node search_replace_table[2][search_hash_table_size];
 long long searched_nodes, hash_conf, hash_get, hash_reg;
 int f_search_table_idx;
 double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
-double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
+double add_arr[n_phases][2][max_canput + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
 
@@ -588,12 +588,9 @@ inline void pre_evaluation(int pattern_idx, int phase_idx, int evaluate_idx, int
         pattern_arr[phase_idx][evaluate_idx][idx] += tmp_pattern_arr[idx];
 }
 
-inline void predict_add(int canput, int sur0, int sur1, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1], double res[n_add_dense1]){
-    double in_arr[n_add_input], hidden0[n_add_dense0];
+inline void predict_add(double in_arr[n_add_input], double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1], double res[n_add_dense1]){
+    double hidden0[n_add_dense0];
     int i, j;
-    in_arr[0] = (double)canput / 30.0;
-    in_arr[1] = ((double)sur0 - 15.0) / 15.0;
-    in_arr[2] = ((double)sur1 - 15.0) / 15.0;
     for (i = 0; i < n_add_dense0; ++i){
         hidden0[i] = bias0[i];
         for (j = 0; j < n_add_input; ++j)
@@ -608,12 +605,31 @@ inline void predict_add(int canput, int sur0, int sur1, double dense0[n_add_dens
     }
 }
 
+inline void predict_add0(int canput, int sur0, int sur1, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1], double res[n_add_dense1]){
+    double in_arr[n_add_input];
+    in_arr[0] = ((double)canput - 15.0) / 15.0;
+    in_arr[1] = 0.0;
+    in_arr[2] = ((double)sur0 - 15.0) / 15.0;
+    in_arr[3] = ((double)sur1 - 15.0) / 15.0;
+    predict_add(in_arr, dense0, bias0, dense1, bias1, res);
+}
+
+inline void predict_add1(int canput, int sur0, int sur1, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1], double res[n_add_dense1]){
+    double in_arr[n_add_input];
+    in_arr[0] = 0.0;
+    in_arr[1] = ((double)canput - 15.0) / 15.0;
+    in_arr[2] = ((double)sur0 - 15.0) / 15.0;
+    in_arr[3] = ((double)sur1 - 15.0) / 15.0;
+    predict_add(in_arr, dense0, bias0, dense1, bias1, res);
+}
+
 inline void pre_evaluation_add(int phase_idx, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1]){
     int canput, sur0, sur1;
-    for (canput = -max_canput; canput <= max_canput; ++canput){
+    for (canput = 0; canput <= max_canput; ++canput){
         for (sur0 = 0; sur0 <= max_surround; ++sur0){
             for (sur1 = 0; sur1 <= max_surround; ++sur1){
-                predict_add(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][canput + max_canput][sur0][sur1]);
+                predict_add0(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][0][canput][sur0][sur1]);
+                predict_add1(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][1][canput][sur0][sur1]);
             }
         }
     }
@@ -845,11 +861,11 @@ inline int evaluate(const board *b){
     int i, phase_idx = calc_phase_idx(b), canput, sur0, sur1;
     double in_arr[n_all_input];
     calc_pattern(b, in_arr);
-    canput = max(0, min(max_canput * 2, calc_canput(b) + max_canput));
+    canput = min(max_canput, calc_canput(b));
     sur0 = min(max_surround, calc_surround0(b));
     sur1 = min(max_surround, calc_surround1(b));
     for (i = 0; i < n_add_dense1; ++i)
-        in_arr[11 + i] = add_arr[phase_idx][canput][sur0][sur1][i];
+        in_arr[11 + i] = add_arr[phase_idx][b->p][canput][sur0][sur1][i];
     double res = all_bias[phase_idx];
     for (i = 0; i < n_all_input; ++i)
         res += in_arr[i] * all_dense[phase_idx][i];
@@ -1073,12 +1089,10 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
 
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    /*
-    if (mpc_higher(b, skipped, depth, beta + sc_w / hw2))
+    if (mpc_higher(b, skipped, depth, beta + 5 * sc_w / hw2))
         return beta + sc_w / hw2;
-    if (mpc_lower(b, skipped, depth, alpha - sc_w / hw2))
+    if (mpc_lower(b, skipped, depth, alpha - 5 * sc_w / hw2))
         return alpha - sc_w / hw2;
-    */
     if (depth <= 8)
         return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
     vector<board> nb;
@@ -1153,7 +1167,7 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
     int g = alpha, v = -inf;
     for (const board &nnb: nb){
         if (&nnb - &nb[0]){
-            g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -alpha - epsilon, -alpha);
+            g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -alpha - sc_w / hw2, -alpha);
             if (beta <= g)
                 return g;
             v = max(v, g);
@@ -1593,8 +1607,8 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 18;
-    final_depth = 20;
+    depth = 16;
+    final_depth = 18;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;

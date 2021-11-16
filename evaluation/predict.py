@@ -136,12 +136,14 @@ def calc_n_stones(board):
 
 
 # player = 1 ans = 26
+player = 1
 board = '...............0..0110.0...11000..000000...11110...111....1..1..'
 v1 = -11
 v2 = 27
 v3 = 29
 '''
 # player = 0 ans = 26
+player = 0
 board = '..................0110.....101.....1001....100..................'
 v1 = 12
 v2 = 20
@@ -153,7 +155,10 @@ for i in range(len(pattern_idx)):
     for line in lines:
         all_data[idx].append(line)
         idx += 1
-all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
+if player == 0:
+    all_data[idx].append([(v1 - 15) / 15, 0.0, (v2 - 15) / 15, (v3 - 15) / 15])
+else:
+    all_data[idx].append([0.0, (-v1 - 15) / 15, (v2 - 15) / 15, (v3 - 15) / 15])
 
 model = load_model('learned_data/20_30.h5')
 concat = Model(inputs=model.input, outputs=model.get_layer('concatenate_1').output)
