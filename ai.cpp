@@ -105,7 +105,7 @@ const int global_place[b_idx_num][hw] = {
     {5, 14, 23, -1, -1, -1, -1, -1},{4, 13, 22, 31, -1, -1, -1, -1},{3, 12, 21, 30, 39, -1, -1, -1},{2, 11, 20, 29, 38, 47, -1, -1},{1, 10, 19, 28, 37, 46, 55, -1},{0, 9, 18, 27, 36, 45, 54, 63},{8, 17, 26, 35, 44, 53, 62, -1},{16, 25, 34, 43, 52, 61, -1, -1},{24, 33, 42, 51, 60, -1, -1, -1},{32, 41, 50, 59, -1, -1, -1, -1},{40, 49, 58, -1, -1, -1, -1, -1},
     {2, 9, 16, -1, -1, -1, -1, -1},{3, 10, 17, 24, -1, -1, -1, -1},{4, 11, 18, 25, 32, -1, -1, -1},{5, 12, 19, 26, 33, 40, -1, -1},{6, 13, 20, 27, 34, 41, 48, -1},{7, 14, 21, 28, 35, 42, 49, 56},{15, 22, 29, 36, 43, 50, 57, -1},{23, 30, 37, 44, 51, 58, -1, -1},{31, 38, 45, 52, 59, -1, -1, -1},{39, 46, 53, 60, -1, -1, -1, -1},{47, 54, 61, -1, -1, -1, -1, -1}
 };
-vector<vector<int>> place_included;
+int place_included[hw2][4];
 int pow3[11];
 int mod3[n_line][hw];
 int move_arr[2][n_line][hw][2];
@@ -334,16 +334,17 @@ inline void init_local_place(){
 }
 
 inline void init_included(){
-    int idx, place, l_place;
+    int idx, place, l_place, inc_idx;
     for (place = 0; place < hw2; ++place){
-        vector<int> included;
+        inc_idx = 0;
         for (idx = 0; idx < b_idx_num; ++idx){
             for (l_place = 0; l_place < hw; ++l_place){
                 if (global_place[idx][l_place] == place)
-                    included.push_back(idx);
+                    place_included[place][inc_idx++] = idx;
             }
         }
-        place_included.push_back(included);
+        if (inc_idx == 3)
+            place_included[place][inc_idx] = -1;
     }
 }
 
@@ -378,26 +379,39 @@ inline void init_mpc(){
         mpctsd[i] = (int)(mpct[i] * mpcsd[i]);
 }
 
+inline void move_p(const board *b, board *res, int global_place, int i){
+    int j, k, place, g_place;
+    place = local_place[place_included[global_place][i]][global_place];
+    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][0]; ++j){
+        g_place = global_place - move_offset[place_included[global_place][i]] * j;
+        for (k = 0; k < 3; ++k)
+            res->b[place_included[g_place][k]] = flip_arr[b->p][res->b[place_included[g_place][k]]][local_place[place_included[g_place][k]][g_place]];
+        if (place_included[g_place][3] != -1)
+            res->b[place_included[g_place][3]] = flip_arr[b->p][res->b[place_included[g_place][3]]][local_place[place_included[g_place][3]][g_place]];
+    }
+    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][1]; ++j){
+        g_place = global_place + move_offset[place_included[global_place][i]] * j;
+        for (k = 0; k < 3; ++k)
+            res->b[place_included[g_place][k]] = flip_arr[b->p][res->b[place_included[g_place][k]]][local_place[place_included[g_place][k]][g_place]];
+        if (place_included[g_place][3] != -1)
+            res->b[place_included[g_place][3]] = flip_arr[b->p][res->b[place_included[g_place][3]]][local_place[place_included[g_place][3]][g_place]];
+    }
+}
+
 inline board move(const board *b, const int global_place){
     board res;
-    int j, place, g_place;
-    for (int i = 0; i < b_idx_num; ++i)
+    int i;
+    for (i = 0; i < b_idx_num; ++i)
         res.b[i] = b->b[i];
-    for (const int &i: place_included[global_place]){
-        place = local_place[i][global_place];
-        for (j = 1; j <= move_arr[b->p][b->b[i]][place][0]; ++j){
-            g_place = global_place - move_offset[i] * j;
-            for (const int &idx: place_included[g_place])
-                res.b[idx] = flip_arr[b->p][res.b[idx]][local_place[idx][g_place]];
-        }
-        for (j = 1; j <= move_arr[b->p][b->b[i]][place][1]; ++j){
-            g_place = global_place + move_offset[i] * j;
-            for (const int &idx: place_included[g_place])
-                res.b[idx] = flip_arr[b->p][res.b[idx]][local_place[idx][g_place]];
-        }
+    for (i = 0; i < 3; ++i)
+        move_p(b, &res, global_place, i);
+    if (place_included[global_place][3] != -1){
+        move_p(b, &res, global_place, 3);
     }
-    for (const int &idx: place_included[global_place])
-        res.b[idx] = put_arr[b->p][res.b[idx]][local_place[idx][global_place]];
+    for (i = 0; i < 3; ++i)
+        res.b[place_included[global_place][i]] = put_arr[b->p][res.b[place_included[global_place][i]]][local_place[place_included[global_place][i]][global_place]];
+    if (place_included[global_place][3] != -1)
+        res.b[place_included[global_place][3]] = put_arr[b->p][res.b[place_included[global_place][3]]][local_place[place_included[global_place][3]][global_place]];
     res.p = 1 - b->p;
     res.n = b->n + 1;
     res.policy = global_place;
@@ -755,11 +769,18 @@ inline void get_search(const int *key, const int hash, const int table_idx, int 
 
 inline int calc_canput_exact(const board *b){
     int res = 0;
-    int place;
+    int place, i;
     for (const int &global_place: vacant_lst){
-        for (const int &i: place_included[global_place]){
-            place = local_place[i][global_place];
-            if (legal_arr[b->p][b->b[i]][place]){
+        for (i = 0; i < 3; ++i){
+            place = local_place[place_included[global_place][i]][global_place];
+            if (legal_arr[b->p][b->b[place_included[global_place][i]]][place]){
+                ++res;
+                break;
+            }
+        }
+        if (place_included[global_place][3] != -1){
+            place = local_place[place_included[global_place][3]][global_place];
+            if (legal_arr[b->p][b->b[place_included[global_place][3]]][place]){
                 ++res;
                 break;
             }
@@ -928,14 +949,16 @@ inline void move_ordering(board *b){
 
 inline int last1(const board *b, bool skipped, int p0){
     ++searched_nodes;
-    int before_score = 0;
-    for (int i = 0; i < hw; ++i)
+    int i, before_score = 0;
+    for (i = 0; i < hw; ++i)
         before_score += count_arr[b->b[i]];
     if (b->p)
         before_score = -before_score;
     int score = before_score + 1;
-    for (const int &idx: place_included[p0])
-        score += (move_arr[b->p][b->b[idx]][local_place[idx][p0]][0] + move_arr[b->p][b->b[idx]][local_place[idx][p0]][1]) * 2;
+    for (i = 0; i < 3; ++i)
+        score += (move_arr[b->p][b->b[place_included[p0][i]]][local_place[place_included[p0][i]][p0]][0] + move_arr[b->p][b->b[place_included[p0][i]]][local_place[place_included[p0][i]][p0]][1]) * 2;
+    if (place_included[p0][3] != -1)
+        score += (move_arr[b->p][b->b[place_included[p0][3]]][local_place[place_included[p0][3]][p0]][0] + move_arr[b->p][b->b[place_included[p0][3]]][local_place[place_included[p0][3]][p0]][1]) * 2;
     if (score == before_score + 1){
         if (skipped)
             return end_game(b);
@@ -953,9 +976,11 @@ inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int 
     ++searched_nodes;
     board nb;
     bool passed = true;
-    int v = -inf, g;
-    for (const int &idx: place_included[p0]){
-        if (legal_arr[b->p][b->b[idx]][local_place[idx][p0]]){
+    int i, v = -inf, g;
+    for (i = 0; i < 4; ++i){
+        if (place_included[p0][i] == -1)
+            break;
+        if (legal_arr[b->p][b->b[place_included[p0][i]]][local_place[place_included[p0][i]][p0]]){
             passed = false;
             nb = move(b, p0);
             g = -last1(&nb, false, p1);
@@ -966,8 +991,10 @@ inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int 
             break;
         }
     }
-    for (const int &idx: place_included[p1]){
-        if (legal_arr[b->p][b->b[idx]][local_place[idx][p1]]){
+    for (i = 0; i < 4; ++i){
+        if (place_included[p1][i] == -1)
+            break;
+        if (legal_arr[b->p][b->b[place_included[p1][i]]][local_place[place_included[p1][i]][p1]]){
             passed = false;
             nb = move(b, p1);
             g = -last1(&nb, false, p0);
@@ -995,9 +1022,11 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
     ++searched_nodes;
     board nb;
     bool passed = true;
-    int v = -inf, g;
-    for (const int &idx: place_included[p0]){
-        if (legal_arr[b->p][b->b[idx]][local_place[idx][p0]]){
+    int i, v = -inf, g;
+    for (i = 0; i < 4; ++i){
+        if (place_included[p0][i] == -1)
+            break;
+        if (legal_arr[b->p][b->b[place_included[p0][i]]][local_place[place_included[p0][i]][p0]]){
             passed = false;
             nb = move(b, p0);
             g = -last2(&nb, false, -beta, -alpha, p1, p2);
@@ -1008,8 +1037,10 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
             break;
         }
     }
-    for (const int &idx: place_included[p1]){
-        if (legal_arr[b->p][b->b[idx]][local_place[idx][p1]]){
+    for (i = 0; i < 4; ++i){
+        if (place_included[p1][i] == -1)
+            break;
+        if (legal_arr[b->p][b->b[place_included[p1][i]]][local_place[place_included[p1][i]][p1]]){
             passed = false;
             nb = move(b, p1);
             g = -last2(&nb, false, -beta, -alpha, p0, p2);
@@ -1020,8 +1051,10 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
             break;
         }
     }
-    for (const int &idx: place_included[p2]){
-        if (legal_arr[b->p][b->b[idx]][local_place[idx][p2]]){
+    for (i = 0; i < 4; ++i){
+        if (place_included[p2][i] == -1)
+            break;
+        if (legal_arr[b->p][b->b[place_included[p2][i]]][local_place[place_included[p2][i]][p2]]){
             passed = false;
             nb = move(b, p2);
             g = -last2(&nb, false, -beta, -alpha, p0, p1);
@@ -1068,11 +1101,13 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
     ++searched_nodes;
     board nb;
     bool passed = true;
-    int v = -inf, g;
+    int i, v = -inf, g;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     passed = false;
                     nb = move(b, cell);
                     g = -nega_alpha_final(&nb, strt, false, depth - 1, -beta, -alpha);
@@ -1106,11 +1141,13 @@ int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped
     if (depth <= 8)
         return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
     vector<board> nb;
-    int canput = 0;
+    int i, canput = 0;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
                     //move_ordering(&(nb[canput]));
                     nb[canput].v = -calc_canput_exact(&(nb[canput]));
@@ -1148,11 +1185,13 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
     if (depth <= 8)
         return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
     vector<board> nb;
-    int canput = 0;
+    int i, canput = 0;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
                     move_ordering(&(nb[canput]));
                     //nb[canput].v = -calc_canput_exact(&(nb[canput]));
@@ -1204,11 +1243,13 @@ int nega_alpha(const board *b, const long long strt, bool skipped, int depth, in
     }
     board nb;
     bool passed = true;
-    int g, v = -inf;
+    int i, g, v = -inf;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     passed = false;
                     nb = move(b, cell);
                     g = -nega_alpha(&nb, strt, false, depth - 1, -beta, -alpha);
@@ -1264,11 +1305,13 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
             return beta;
     }
     vector<board> nb;
-    int canput = 0;
+    int i, canput = 0;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
                     move_ordering(&(nb[canput]));
                     ++canput;
@@ -1333,11 +1376,13 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
             return beta;
     }
     vector<board> nb;
-    int canput = 0;
+    int i, canput = 0;
     for (const int &cell: vacant_lst){
         if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (const int &idx: place_included[cell]){
-                if (legal_arr[b->p][b->b[idx]][local_place[idx][cell]]){
+            for (i = 0; i < 4; ++i){
+                if (place_included[cell][i] == -1)
+                    break;
+                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
                     move_ordering(&(nb[canput]));
                     ++canput;
@@ -1426,9 +1471,12 @@ int mtd_final(const board *b, const long long strt, bool skipped, int depth, int
 
 inline search_result search(const board b, long long strt, int max_depth){
     vector<board> nb;
+    int i;
     for (const int &cell: vacant_lst){
-        for (const int &idx: place_included[cell]){
-            if (move_arr[b.p][b.b[idx]][local_place[idx][cell]][0] || move_arr[b.p][b.b[idx]][local_place[idx][cell]][1]){
+        for (i = 0; i < 4; ++i){
+            if (place_included[cell][i] == -1)
+                break;
+            if (legal_arr[b.p][b.b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                 cerr << cell << " ";
                 nb.push_back(move(&b, cell));
                 break;
@@ -1440,7 +1488,7 @@ inline search_result search(const board b, long long strt, int max_depth){
     cerr << "canput: " << canput << endl;
     int res_depth;
     int policy = -1;
-    int tmp_policy, i;
+    int tmp_policy;
     int alpha, beta, g, value;
     searched_nodes = 0;
     hash_conf = 0;
@@ -1499,9 +1547,12 @@ inline search_result search(const board b, long long strt, int max_depth){
 
 inline search_result final_search(const board b, long long strt){
     vector<board> nb;
+    int i;
     for (const int &cell: vacant_lst){
-        for (const int &idx: place_included[cell]){
-            if (move_arr[b.p][b.b[idx]][local_place[idx][cell]][0] || move_arr[b.p][b.b[idx]][local_place[idx][cell]][1]){
+        for (i = 0; i < 4; ++i){
+            if (place_included[cell][i] == -1)
+                break;
+            if (legal_arr[b.p][b.b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                 cerr << cell << " ";
                 nb.push_back(move(&b, cell));
                 break;
@@ -1512,7 +1563,7 @@ inline search_result final_search(const board b, long long strt){
     int canput = nb.size();
     cerr << "canput: " << canput << endl;
     int policy = -1;
-    int tmp_policy, i;
+    int tmp_policy;
     int alpha, beta, g, value;
     searched_nodes = 0;
     hash_conf = 0;
