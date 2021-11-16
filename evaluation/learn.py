@@ -113,14 +113,14 @@ for stone_strt in [20, 30, 40, 50]:
     all_data = [[] for _ in range(ln_in)]
     all_labels = []
 
-    def make_lines(board, patterns):
+    def make_lines(board, patterns, player):
         res = []
         for pattern in patterns:
             tmp = []
             for elem in pattern:
-                tmp.append(1.0 if board[elem] == '0' else 0.0)
+                tmp.append(1.0 if board[elem] == str(player) else 0.0)
             for elem in pattern:
-                tmp.append(1.0 if board[elem] == '1' else 0.0)
+                tmp.append(1.0 if board[elem] == str(1 - player) else 0.0)
             res.append(tmp)
         return res
 
@@ -160,13 +160,24 @@ for stone_strt in [20, 30, 40, 50]:
                 #score = tanh(score / 20)
                 #score = score / 64
                 result = result / 64
+                player = int(player)
                 idx = 0
                 for i in range(len(pattern_idx)):
-                    lines = make_lines(board, pattern_idx[i])
+                    lines = make_lines(board, pattern_idx[i], 0)
                     for line in lines:
                         all_data[idx].append(line)
                         idx += 1
-                all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
+                '''
+                if player == 0:
+                    all_data[idx].append([(v1 - 15) / 15, (v2 - 15) / 15, (v3 - 15) / 15])
+                else:
+                    all_data[idx].append([(-v1 - 15) / 15, (v3 - 15) / 15, (v2 - 15) / 15])
+                    result = -result
+                '''
+                if player == 0:
+                    all_data[idx].append([(v1 - 15) / 15, 0.0, (v2 - 15) / 15, (v3 - 15) / 15])
+                else:
+                    all_data[idx].append([0.0, (-v1 - 15) / 15, (v2 - 15) / 15, (v3 - 15) / 15])
                 all_labels.append(result)
 
     x = [None for _ in range(ln_in)]
@@ -191,10 +202,10 @@ for stone_strt in [20, 30, 40, 50]:
             idx += 1
         ys.append(Add()(add_elems))
     y_pattern = Concatenate(axis=-1)(ys)
-    x[idx] = Input(shape=3, name='additional_input')
+    x[idx] = Input(shape=4, name='additional_input')
     y_add = Dense(8, name='add_dense0')(x[idx])
     y_add = LeakyReLU(alpha=0.01)(y_add)
-    y_add = Dense(4, name='add_dense1')(y_add)
+    y_add = Dense(8, name='add_dense1')(y_add)
     y_add = LeakyReLU(alpha=0.01)(y_add)
     y_all = Concatenate(axis=-1)([y_pattern, y_add])
     #y_all = Dense(8, name='all_dense0')(y_all)

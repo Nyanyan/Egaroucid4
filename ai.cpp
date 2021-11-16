@@ -120,7 +120,7 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6] = {1.6,1.7,1.8,1.8,2.0,2.0};
+const double mpct[6] = {1.6,1.6,1.7,1.7,1.8,1.7};
 const double mpcsd[6] = {441.62915001631416, 419.8403427121946, 535.9007293791444, 551.7453519563101, 572.92472392879, 509.7812188328832};
 int mpctsd[6];
 
@@ -1593,8 +1593,8 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 16;
-    final_depth = 18;
+    depth = 18;
+    final_depth = 20;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
