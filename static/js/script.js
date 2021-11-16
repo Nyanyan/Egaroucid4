@@ -11,6 +11,16 @@ let grid = [
     [-1, -1, -1, -1, -1, -1, -1, -1],
     [-1, -1, -1, -1, -1, -1, -1, -1]
 ];
+let bef_grid = [
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1]
+];
 var player = 0;
 var ai_player = -1;
 var tl = 50;
@@ -75,6 +85,11 @@ function start() {
             tl_idx = i;
         }
     }
+    for (var yy = 0; yy < hw; ++yy) {
+        for (var xx = 0; xx < hw; ++xx) {
+            bef_grid[yy][xx] = grid[yy][xx];
+        }
+    }
     document.getElementById('start').disabled = true;
     var data_json = {};
     data_json["ai_player"] = ai_player;
@@ -104,13 +119,17 @@ function show(r, c) {
         for (var x = 0; x < 8; ++x) {
             table.rows[y].cells[x].style.backgroundColor = "#249972";
             if (grid[y][x] == 0) {
-                //table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
-                table.rows[y].cells[x].firstChild.className ="black_stone";
-                table.rows[y].cells[x].setAttribute('onclick', "");
+                if (bef_grid[y][x] != 0) {
+                    table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
+                    //table.rows[y].cells[x].firstChild.className ="black_stone";
+                    table.rows[y].cells[x].setAttribute('onclick', "");
+                }
             } else if (grid[y][x] == 1) {
-                //table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
-                table.rows[y].cells[x].firstChild.className ="white_stone";
-                table.rows[y].cells[x].setAttribute('onclick', "");
+                if (bef_grid[y][x] != 1) {
+                    table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
+                    //table.rows[y].cells[x].firstChild.className ="white_stone";
+                    table.rows[y].cells[x].setAttribute('onclick', "");
+                }
             } else if (grid[y][x] == 2) {
                 if (r == -1 || inside(r, c)) {
                     //table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
@@ -331,6 +350,11 @@ function move(y, x) {
             direction = 3;
         else
             direction = 2;
+    }
+    for (var yy = 0; yy < hw; ++yy) {
+        for (var xx = 0; xx < hw; ++xx) {
+            bef_grid[yy][xx] = grid[yy][xx];
+        }
     }
     grid[y][x] = player;
     for (var dr = 0; dr < 8; ++dr) {
