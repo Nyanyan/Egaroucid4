@@ -194,7 +194,7 @@ for stone_strt in [20, 30, 40, 50]:
     x[idx] = Input(shape=3, name='additional_input')
     y_add = Dense(8, name='add_dense0')(x[idx])
     y_add = LeakyReLU(alpha=0.01)(y_add)
-    y_add = Dense(8, name='add_dense1')(y_add)
+    y_add = Dense(4, name='add_dense1')(y_add)
     y_add = LeakyReLU(alpha=0.01)(y_add)
     y_all = Concatenate(axis=-1)([y_pattern, y_add])
     #y_all = Dense(8, name='all_dense0')(y_all)

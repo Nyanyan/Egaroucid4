@@ -40,7 +40,12 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 #define n_patterns 11
 #define n_dense0 16
 #define n_dense1 16
-#define n_all_input 14
+#define n_add_input 3
+#define n_add_dense0 8
+#define n_add_dense1 8
+#define n_all_input 19
+#define max_canput 30
+#define max_surround 50
 
 #define epsilon 1
 #define sc_w 6400
@@ -115,8 +120,8 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6] = {1.6,1.7,1.8,1.8,2.5,2.0};
-const double mpcsd[6] = {689.6319196947626, 358.2146368431821, 436.34554803500885, 581.9810372985147, 645.7568578518162, 586.1487681953059};
+const double mpct[6] = {1.6,1.7,1.8,1.8,2.0,2.0};
+const double mpcsd[6] = {441.62915001631416, 419.8403427121946, 535.9007293791444, 551.7453519563101, 572.92472392879, 509.7812188328832};
 int mpctsd[6];
 
 vector<int> vacant_lst;
@@ -125,6 +130,7 @@ search_node search_replace_table[2][search_hash_table_size];
 long long searched_nodes, hash_conf, hash_get, hash_reg;
 int f_search_table_idx;
 double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
+double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
 
@@ -559,10 +565,10 @@ inline int calc_rev_idx(int pattern_idx, int pattern_size, int idx){
 }
 
 inline void pre_evaluation(int pattern_idx, int phase_idx, int evaluate_idx, int pattern_size, double dense0[n_dense0][20], double bias0[n_dense0], double dense1[n_dense1][n_dense0], double bias1[n_dense1], double dense2[n_dense1], double bias2){
-    int digit;
+    int digit, idx, i;
     double arr[20], tmp_pattern_arr[max_evaluate_idx];
-    for (int idx = 0; idx < pow3[pattern_size]; ++idx){
-        for (int i = 0; i < pattern_size; ++i){
+    for (idx = 0; idx < pow3[pattern_size]; ++idx){
+        for (i = 0; i < pattern_size; ++i){
             digit = (idx / pow3[pattern_size - 1 - i]) % 3;
             if (digit == 0){
                 arr[i] = 1.0;
@@ -578,12 +584,38 @@ inline void pre_evaluation(int pattern_idx, int phase_idx, int evaluate_idx, int
         pattern_arr[phase_idx][evaluate_idx][idx] = predict(pattern_size, arr, dense0, bias0, dense1, bias1, dense2, bias2);
         tmp_pattern_arr[calc_rev_idx(pattern_idx, pattern_size, idx)] = pattern_arr[phase_idx][evaluate_idx][idx];
     }
-    for (int idx = 0; idx < pow3[pattern_size]; ++idx){
-        pattern_arr[phase_idx][evaluate_idx][idx] = pattern_arr[phase_idx][evaluate_idx][idx] + tmp_pattern_arr[idx];
-        if (pattern_idx == 6)
-            pattern_arr[phase_idx][evaluate_idx][idx] /= 4.0;
-        else
-            pattern_arr[phase_idx][evaluate_idx][idx] /= 8.0;
+    for (idx = 0; idx < pow3[pattern_size]; ++idx)
+        pattern_arr[phase_idx][evaluate_idx][idx] += tmp_pattern_arr[idx];
+}
+
+inline void predict_add(int canput, int sur0, int sur1, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1], double res[n_add_dense1]){
+    double in_arr[n_add_input], hidden0[n_add_dense0];
+    int i, j;
+    in_arr[0] = (double)canput / 30.0;
+    in_arr[1] = ((double)sur0 - 15.0) / 15.0;
+    in_arr[2] = ((double)sur1 - 15.0) / 15.0;
+    for (i = 0; i < n_add_dense0; ++i){
+        hidden0[i] = bias0[i];
+        for (j = 0; j < n_add_input; ++j)
+            hidden0[i] += in_arr[j] * dense0[i][j];
+        hidden0[i] = leaky_relu(hidden0[i]);
+    }
+    for (i = 0; i < n_add_dense1; ++i){
+        res[i] = bias1[i];
+        for (j = 0; j < n_add_dense0; ++j)
+            res[i] += hidden0[j] * dense1[i][j];
+        res[i] = leaky_relu(res[i]);
+    }
+}
+
+inline void pre_evaluation_add(int phase_idx, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1]){
+    int canput, sur0, sur1;
+    for (canput = -max_canput; canput <= max_canput; ++canput){
+        for (sur0 = 0; sur0 <= max_surround; ++sur0){
+            for (sur1 = 0; sur1 <= max_surround; ++sur1){
+                predict_add(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][canput + max_canput][sur0][sur1]);
+            }
+        }
     }
 }
 
@@ -601,6 +633,10 @@ inline void init_evaluation(){
     double bias1[n_dense1];
     double dense2[n_dense1];
     double bias2;
+    double add_dense0[n_add_dense0][n_add_input];
+    double add_bias0[n_add_dense0];
+    double add_dense1[n_add_dense1][n_add_dense0];
+    double add_bias1[n_add_dense1];
     const int pattern_sizes[n_patterns] = {8, 8, 8, 5, 6, 7, 8, 10, 10, 10, 10};
     for (phase_idx = 0; phase_idx < n_phases; ++phase_idx){
         for (pattern_idx = 0; pattern_idx < n_patterns; ++pattern_idx){
@@ -632,6 +668,27 @@ inline void init_evaluation(){
             bias2 = stof(line);
             pre_evaluation(pattern_idx, phase_idx, pattern_idx, pattern_sizes[pattern_idx], dense0, bias0, dense1, bias1, dense2, bias2);
         }
+        for (i = 0; i < n_add_input; ++i){
+            for (j = 0; j < n_add_dense0; ++j){
+                getline(ifs, line);
+                add_dense0[j][i] = stof(line);
+            }
+        }
+        for (i = 0; i < n_add_dense0; ++i){
+            getline(ifs, line);
+            add_bias0[i] = stof(line);
+        }
+        for (i = 0; i < n_add_dense0; ++i){
+            for (j = 0; j < n_add_dense1; ++j){
+                getline(ifs, line);
+                add_dense1[j][i] = stof(line);
+            }
+        }
+        for (i = 0; i < n_add_dense1; ++i){
+            getline(ifs, line);
+            add_bias1[i] = stof(line);
+        }
+        pre_evaluation_add(phase_idx, add_dense0, add_bias0, add_dense1, add_bias1);
         for (i = 0; i < n_all_input; ++i){
             getline(ifs, line);
             all_dense[phase_idx][i] = stof(line);
@@ -785,14 +842,16 @@ inline void calc_pattern(const board *b, double arr[]){
 }
 
 inline int evaluate(const board *b){
-    int phase_idx = calc_phase_idx(b);
+    int i, phase_idx = calc_phase_idx(b), canput, sur0, sur1;
     double in_arr[n_all_input];
     calc_pattern(b, in_arr);
-    in_arr[11] = (double)calc_canput(b) / 30.0;
-    in_arr[12] = ((double)calc_surround0(b) - 15.0) / 15.0;
-    in_arr[13] = ((double)calc_surround1(b) - 15.0) / 15.0;
+    canput = max(0, min(max_canput * 2, calc_canput(b) + max_canput));
+    sur0 = min(max_surround, calc_surround0(b));
+    sur1 = min(max_surround, calc_surround1(b));
+    for (i = 0; i < n_add_dense1; ++i)
+        in_arr[11 + i] = add_arr[phase_idx][canput][sur0][sur1][i];
     double res = all_bias[phase_idx];
-    for (int i = 0; i < n_all_input; ++i)
+    for (i = 0; i < n_all_input; ++i)
         res += in_arr[i] * all_dense[phase_idx][i];
     if (b->p)
         res = -res;
