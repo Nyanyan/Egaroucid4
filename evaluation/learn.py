@@ -167,13 +167,7 @@ for stone_strt in [30, 40, 50]:
                     for line in lines:
                         all_data[idx].append(line)
                         idx += 1
-                '''
-                if player == 0:
-                    all_data[idx].append([(v1 - 15) / 15, (v2 - 15) / 15, (v3 - 15) / 15])
-                else:
-                    all_data[idx].append([(-v1 - 15) / 15, (v3 - 15) / 15, (v2 - 15) / 15])
-                    result = -result
-                '''
+                all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
                 if player == 0:
                     all_data[idx].append([(v1 - 15) / 15, 0.0, (v2 - 15) / 15, (v3 - 15) / 15])
                 else:
@@ -202,7 +196,7 @@ for stone_strt in [30, 40, 50]:
             idx += 1
         ys.append(Add()(add_elems))
     y_pattern = Concatenate(axis=-1)(ys)
-    x[idx] = Input(shape=4, name='additional_input')
+    x[idx] = Input(shape=3, name='additional_input')
     y_add = Dense(8, name='add_dense0')(x[idx])
     y_add = LeakyReLU(alpha=0.01)(y_add)
     y_add = Dense(8, name='add_dense1')(y_add)
