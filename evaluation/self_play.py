@@ -192,7 +192,7 @@ def self_play():
         #print('=', end='', file=sys.stderr, flush=True)
         rv = reversi()
         tactic_idx = randrange(0, ln_tactic)
-        for y, x in tactic[tactic_idx][:min(len(tactic[tactic_idx]), 20)]:
+        for y, x in tactic[tactic_idx][:min(len(tactic[tactic_idx]), 25)]:
             rv.check_pass()
             rv.check_pass()
             rv.move(y, x)
@@ -206,6 +206,7 @@ def self_play():
                     for xx in range(hw):
                         grid_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
                     grid_str += '\n'
+                #print(grid_str)
                 ais[rv.player].stdin.write(grid_str.encode('utf-8'))
                 ais[rv.player].stdin.flush()
                 y, x, score = ais[rv.player].stdout.readline().split()
@@ -217,7 +218,8 @@ def self_play():
                 score = float(score)
                 if rv.player == 1:
                     score = -score
-                data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score))
+                #data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score))
+                data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
             except:
                 print('err')
                 break_flag = True

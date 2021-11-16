@@ -17,7 +17,7 @@ def rev_f(y):
 
 nums = [f(i) for i in range(ln_char)]
 
-play_num = 12000
+play_num = 34560
 parallel_num = 6
 parallel_exe_num = play_num // parallel_num
 

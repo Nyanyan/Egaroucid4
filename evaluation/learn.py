@@ -168,10 +168,12 @@ for stone_strt in [30, 40, 50]:
                         all_data[idx].append(line)
                         idx += 1
                 all_data[idx].append([v1 / 30, (v2 - 15) / 15, (v3 - 15) / 15])
+                '''
                 if player == 0:
                     all_data[idx].append([(v1 - 15) / 15, 0.0, (v2 - 15) / 15, (v3 - 15) / 15])
                 else:
                     all_data[idx].append([0.0, (-v1 - 15) / 15, (v2 - 15) / 15, (v3 - 15) / 15])
+                '''
                 all_labels.append(result)
 
     x = [None for _ in range(ln_in)]
