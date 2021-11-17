@@ -27,8 +27,11 @@ def calc_n_stones(board):
 evaluate = subprocess.Popen('./mpc.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 sleep(1)
 
-vhs = [[] for _ in range(6)]
-vds = [[] for _ in range(6)]
+min_depth = 1
+max_depth = 10
+
+vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
+vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
 
 vh_vd = []
 
@@ -47,7 +50,7 @@ def collect_data(num):
         datum = data[randrange(0, len(data))]
         board, player, _, _, _, _ = datum.split()
         n_stones = calc_n_stones(board)
-        depth = randint(3, 12)
+        depth = randint(min_depth, max_depth)
         board_proc = player + '\n' + str(mpcd[depth]) + '\n' + str(depth) + '\n'
         for i in range(hw):
             for j in range(hw):
@@ -58,14 +61,11 @@ def collect_data(num):
         evaluate.stdin.flush()
         vd, vh = [float(i) for i in evaluate.stdout.readline().decode().strip().split()]
         #print(score)
-        vhs[(n_stones - 4) // 10].append(vh)
-        vds[(n_stones - 4) // 10].append(vd)
+        vhs[(n_stones - 4) // 10][depth - min_depth].append(vh)
+        vds[(n_stones - 4) // 10][depth - min_depth].append(vd)
 
-for i in range(1):
+for i in range(10):
     collect_data(i)
-for i in range(6):
-    print(len(vhs[i]), vhs[i][:10])
-    print(len(vds[i]), vds[i][:10])
 
 start_temp = 1000.0
 end_temp   = 10.0
@@ -119,7 +119,9 @@ while time() - strt < tl:
 
 print(f_score)
 '''
-vh_vd = [[vhs[j][i] - f(vds[j][i]) for i in range(len(vhs[j]))] for j in range(6)]
-sd = [statistics.stdev(vh_vd[j]) for j in range(6)]
-print(a, b, sd)
+
+vh_vd = [[[vhs[i][j][k] - f(vds[i][j][k]) for k in range(len(vhs[i][j]))] for j in range(len(vhs[i]))] for i in range(6)]
+sd = [[round(statistics.stdev(vh_vd[i][j])) for j in range(len(vh_vd[i]))] for i in range(6)]
+for each_sd in sd:
+    print(str(each_sd).replace('[', '{').replace(']', '}') + ',')
 evaluate.kill()

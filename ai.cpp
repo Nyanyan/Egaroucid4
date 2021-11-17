@@ -55,6 +55,9 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 #define mtd_threshold 400
 #define complete_read_depth 25
 
+#define mpc_min_depth 1
+#define mpc_max_depth 10
+
 #define p31 3
 #define p32 9
 #define p33 27
@@ -132,9 +135,16 @@ int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
 const double mpct[6]={1.6,1.6,1.6,1.5,1.4,1.4};
-const double mpcsd[6]={439.66735601633303, 444.9327605701466, 535.2660206399519, 448.1616069501835, 620.8806141835687, 415.44744776857635};
+const double mpcsd[6][mpc_max_depth - mpc_min_depth + 1]={
+    {482, 512, 352, 298, 474, 372, 349, 323, 463, 335},
+    {312, 381, 310, 261, 354, 322, 291, 313, 389, 371},
+    {389, 463, 392, 352, 548, 402, 422, 441, 530, 538},
+    {417, 490, 436, 405, 570, 494, 452, 438, 527, 524},
+    {486, 554, 519, 463, 635, 665, 555, 550, 635, 581},
+    {433, 517, 430, 391, 560, 556, 383, 345, 567, 332}
+};
 const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
-int mpctsd[6];
+int mpctsd[6][mpc_max_depth - mpc_min_depth + 1];
 
 vector<int> vacant_lst;
 book_node *book[book_hash_table_size];
@@ -377,8 +387,11 @@ inline void init_pop_mid(){
 }
 
 inline void init_mpc(){
-    for (int i = 0; i < 6; ++i)
-        mpctsd[i] = (int)(mpct[i] * mpcsd[i]);
+    int i, j;
+    for (i = 0; i < 6; ++i){
+        for (j = 0; j < mpc_max_depth - mpc_min_depth + 1; ++j)
+            mpctsd[i][j] = (int)(mpct[i] * mpcsd[i][j]);
+    }
 }
 
 inline void move_p(const board *b, board *res, int global_place, int i){
@@ -912,17 +925,13 @@ int nega_alpha(const board *b, const long long strt, bool skipped, int depth, in
 
 inline bool mpc_higher(const board *b, bool skipped, int depth, int beta){
     //return false;
-    if (depth >= 20)
-        return false;
-    int bound = beta + mpctsd[(b->n - 4) / 10];
+    int bound = beta + mpctsd[(b->n - 4) / 10][depth - mpc_max_depth];
     return nega_alpha(b, tim(), skipped, mpcd[depth], bound - epsilon, bound) >= bound;
 }
 
 inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
     //return false;
-    if (depth >= 20)
-        return false;
-    int bound = alpha - mpctsd[(b->n - 4) / 10];
+    int bound = alpha - mpctsd[(b->n - 4) / 10][depth - mpc_max_depth];
     return nega_alpha(b, tim(), skipped, mpcd[depth], bound, bound + epsilon) <= bound;
 }
 
@@ -1125,10 +1134,12 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
 
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (mpc_higher(b, skipped, depth, beta + 12 * step))
-        return beta + step;
-    if (mpc_lower(b, skipped, depth, alpha - 12 * step))
-        return alpha - step;
+    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
+        if (mpc_higher(b, skipped, depth, beta + 12 * step))
+            return beta + step;
+        if (mpc_lower(b, skipped, depth, alpha - 12 * step))
+            return alpha - step;
+    }
     if (depth <= 8)
         return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
     vector<board> nb;
@@ -1272,10 +1283,12 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
         else
             return end_game(b);
     }
-    if (mpc_higher(b, skipped, depth, beta + epsilon))
-        return beta + epsilon;
-    if (mpc_lower(b, skipped, depth, alpha - epsilon))
-        return alpha - epsilon;
+    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
+        if (mpc_higher(b, skipped, depth, beta + epsilon))
+            return beta + epsilon;
+        if (mpc_lower(b, skipped, depth, alpha - epsilon))
+            return alpha - epsilon;
+    }
     if (depth <= 3)
         return nega_alpha(b, strt, skipped, depth, alpha, beta);
     int hash = (int)(calc_hash(b->b) & search_hash_mask);
@@ -1656,7 +1669,7 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 20;
+    depth = 16;
     final_depth = 20;
     long long strt = tim();
     search_result result;

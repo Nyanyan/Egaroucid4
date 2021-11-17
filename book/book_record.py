@@ -98,7 +98,18 @@ print(len(record_all))
 inf = 10000
 with open('third_party/records4.txt', 'r') as f:
     records = f.read().splitlines()
-for record in records:
+record = records[0]
+record_proc = ''
+for i in range(0, len(record), 2):
+    x = ord(record[i]) - ord('a')
+    y = int(record[i + 1]) - 1
+    record_proc += all_chars[y * 8 + x]
+    if not record_proc in record_all:
+        record_all[record_proc] = [1000, inf * 1000]
+    else:
+        record_all[record_proc][0] += 1000
+        record_all[record_proc][1] += inf * 1000
+for record in records[1:]:
     record_proc = ''
     for i in range(0, len(record), 2):
         x = ord(record[i]) - ord('a')
