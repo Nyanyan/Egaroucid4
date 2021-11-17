@@ -27,7 +27,7 @@ for stone_strt in [30, 40, 50]:
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 50000
+    game_num = 33000
     test_ratio = 0.1
     n_epochs = 10
 
@@ -176,6 +176,7 @@ for stone_strt in [30, 40, 50]:
                 '''
                 all_labels.append(result)
 
+    '''
     x = [None for _ in range(ln_in)]
     ys = []
     names = ['line2', 'line3', 'line4', 'diagonal5', 'diagonal6', 'diagonal7', 'diagonal8', 'edge2X', 'triangle', 'edgeblock', 'cross']
@@ -209,6 +210,8 @@ for stone_strt in [30, 40, 50]:
     y_all = Dense(1, name='all_dense0')(y_all)
 
     model = Model(inputs=x, outputs=y_all)
+    '''
+    model = load_model('learned_data/bef_' + str(stone_strt) + '_' + str(stone_end) + '.h5')
 
     model.summary()
     plot_model(model, to_file='model.png', show_shapes=True)

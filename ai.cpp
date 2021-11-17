@@ -33,7 +33,7 @@ using namespace std;
 constexpr int book_hash_mask = book_hash_table_size - 1;
 #define book_stones 55
 
-#define search_hash_table_size 131072
+#define search_hash_table_size 1048576
 constexpr int search_hash_mask = search_hash_table_size - 1;
 
 #define n_phases 4
@@ -49,9 +49,10 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 
 #define epsilon 1
 #define sc_w 6400
+#define step 100
 #define cache_hit 10000
 #define cache_both 1000
-#define mtd_threshold 200
+#define mtd_threshold 400
 #define complete_read_depth 25
 
 #define p31 3
@@ -130,8 +131,9 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6] = {1.6,1.6,1.8,1.8,1.8,1.7};
-const double mpcsd[6] = {450.6139504497545, 310.2226798312592, 431.5637185096497, 428.4172123621121, 539.1393120161954, 381.8740298266644};
+const double mpct[6]={1.6,1.6,1.6,1.5,1.45,1.45};
+const double mpcsd[6]={439.66735601633303, 444.9327605701466, 535.2660206399519, 448.1616069501835, 620.8806141835687, 415.44744776857635};
+const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
 int mpctsd[6];
 
 vector<int> vacant_lst;
@@ -140,7 +142,7 @@ search_node search_replace_table[2][search_hash_table_size];
 long long searched_nodes, hash_conf, hash_get, hash_reg;
 int f_search_table_idx;
 double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
-double add_arr[n_phases][max_canput + 1][max_surround + 1][max_surround + 1][n_add_dense1];
+double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
 
@@ -636,10 +638,10 @@ inline void predict_add(int canput, int sur0, int sur1, double dense0[n_add_dens
 
 inline void pre_evaluation_add(int phase_idx, double dense0[n_add_dense0][n_add_input], double bias0[n_add_dense0], double dense1[n_add_dense1][n_add_dense0], double bias1[n_add_dense1]){
     int canput, sur0, sur1;
-    for (canput = 0; canput <= max_canput; ++canput){
+    for (canput = -max_canput; canput <= max_canput; ++canput){
         for (sur0 = 0; sur0 <= max_surround; ++sur0){
             for (sur1 = 0; sur1 <= max_surround; ++sur1)
-                predict_add(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][canput][sur0][sur1]);
+                predict_add(canput, sur0, sur1, dense0, bias0, dense1, bias1, add_arr[phase_idx][canput + max_canput][sur0][sur1]);
         }
     }
 }
@@ -877,7 +879,7 @@ inline int evaluate(const board *b){
     int i, phase_idx = calc_phase_idx(b), canput, sur0, sur1;
     double in_arr[n_all_input];
     calc_pattern(b, in_arr);
-    canput = min(max_canput, max(0, max_canput + calc_canput(b)));
+    canput = min(max_canput * 2, max(0, max_canput + calc_canput(b)));
     sur0 = min(max_surround, calc_surround0(b));
     sur1 = min(max_surround, calc_surround1(b));
     for (i = 0; i < n_add_dense1; ++i)
@@ -903,21 +905,25 @@ inline int end_game(const board *b){
         count += vacant;
     else if (count < 0)
         count -= vacant;
-    return count * sc_w / hw2;
+    return count * step;
 }
 
 int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta);
 
-inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
-    //return false;
-    int bound = alpha - mpctsd[(b->n - 4) / 10];
-    return nega_alpha(b, tim(), skipped, depth / 4, bound, bound + epsilon) <= bound;
-}
-
 inline bool mpc_higher(const board *b, bool skipped, int depth, int beta){
     //return false;
+    if (depth >= 20)
+        return false;
     int bound = beta + mpctsd[(b->n - 4) / 10];
-    return nega_alpha(b, tim(), skipped, depth / 4, bound - epsilon, bound) >= bound;
+    return nega_alpha(b, tim(), skipped, mpcd[depth], bound - epsilon, bound) >= bound;
+}
+
+inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
+    //return false;
+    if (depth >= 20)
+        return false;
+    int bound = alpha - mpctsd[(b->n - 4) / 10];
+    return nega_alpha(b, tim(), skipped, mpcd[depth], bound, bound + epsilon) <= bound;
 }
 
 inline void move_ordering(board *b){
@@ -954,7 +960,7 @@ inline int last1(const board *b, bool skipped, int p0){
         rb.n = b->n;
         return -last1(&rb, true, p0);
     }
-    return score * sc_w / hw2;
+    return score * step;
 }
 
 inline int last2(const board *b, bool skipped, int alpha, int beta, int p0, int p1){
@@ -1119,10 +1125,10 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
 
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (mpc_higher(b, skipped, depth, beta + 8 * sc_w / hw2))
-        return beta + sc_w / hw2;
-    if (mpc_lower(b, skipped, depth, alpha - 8 * sc_w / hw2))
-        return alpha - sc_w / hw2;
+    if (mpc_higher(b, skipped, depth, beta + 12 * step))
+        return beta + step;
+    if (mpc_lower(b, skipped, depth, alpha - 12 * step))
+        return alpha - step;
     if (depth <= 8)
         return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
     vector<board> nb;
@@ -1134,8 +1140,7 @@ int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped
                     break;
                 if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
-                    //move_ordering(&(nb[canput]));
-                    nb[canput].v = -calc_canput_exact(&(nb[canput]));
+                    move_ordering(&(nb[canput]));
                     ++canput;
                     break;
                 }
@@ -1179,7 +1184,6 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
                 if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
                     nb.push_back(move(b, cell));
                     move_ordering(&(nb[canput]));
-                    //nb[canput].v = -calc_canput_exact(&(nb[canput]));
                     ++canput;
                     break;
                 }
@@ -1201,7 +1205,7 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
     int g = alpha, v = -inf;
     for (const board &nnb: nb){
         if (&nnb - &nb[0]){
-            g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -alpha - sc_w / hw2, -alpha);
+            g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -alpha - step, -alpha);
             if (beta <= g)
                 return g;
             v = max(v, g);
@@ -1433,7 +1437,6 @@ int mtd(const board *b, const long long strt, bool skipped, int depth, int l, in
 }
 
 int mtd_final(const board *b, const long long strt, bool skipped, int depth, int max_beta){
-    int step = sc_w / hw2;
     int l = -hw2, u = hw2;
     max_beta /= step;
     int g = evaluate(b) / step, beta;
@@ -1556,8 +1559,8 @@ inline search_result final_search(const board b, long long strt){
     hash_reg = 0;
     int order_l, order_u;
     int max_depth = hw2 - b.n;
-    if (max_depth - 5 > 0)
-        search(b, strt, max_depth - 5);
+    if (max_depth - 7 > 0)
+        search(b, strt, max_depth - 7);
     alpha = -sc_w;
     beta = sc_w;
     search_hash_table_init(1 - f_search_table_idx);
@@ -1577,7 +1580,7 @@ inline search_result final_search(const board b, long long strt){
     alpha = max(alpha, g);
     tmp_policy = nb[0].policy;
     for (i = 1; i < canput; ++i){
-        g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - epsilon, -alpha);
+        g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - step, -alpha);
         if (alpha < g){
             g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -g);
             if (alpha < g){
@@ -1653,7 +1656,7 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 18;
+    depth = 16;
     final_depth = 20;
     long long strt = tim();
     search_result result;

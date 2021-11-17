@@ -43,11 +43,11 @@ def collect_data(num):
     except:
         print('cannot open')
         return
-    for _ in trange(5000):
+    for _ in trange(1000):
         datum = data[randrange(0, len(data))]
         board, player, _, _, _, _ = datum.split()
         n_stones = calc_n_stones(board)
-        depth = randint(3, 14)
+        depth = randint(3, 12)
         board_proc = player + '\n' + str(mpcd[depth]) + '\n' + str(depth) + '\n'
         for i in range(hw):
             for j in range(hw):
