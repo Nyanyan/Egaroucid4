@@ -195,6 +195,6 @@ games = []
 
 for idx in range(127): #range(1111111, 1111112):
     raw_data = ''
-    with open('third_party/boards/' + digit(idx, 7) + '.txt', 'r') as f:
+    with open('third_party/human/' + digit(idx, 7) + '.txt', 'r') as f:
         raw_data = f.read()
     collect_data(idx, [list(i.split()) for i in raw_data.splitlines()])

@@ -31,7 +31,7 @@ using namespace std;
 
 #define book_hash_table_size 8192
 constexpr int book_hash_mask = book_hash_table_size - 1;
-#define book_stones 55
+#define book_stones 64
 
 #define search_hash_table_size 1048576
 constexpr int search_hash_mask = search_hash_table_size - 1;
@@ -131,7 +131,7 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6]={1.6,1.6,1.6,1.5,1.45,1.45};
+const double mpct[6]={1.6,1.6,1.6,1.5,1.4,1.4};
 const double mpcsd[6]={439.66735601633303, 444.9327605701466, 535.2660206399519, 448.1616069501835, 620.8806141835687, 415.44744776857635};
 const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
 int mpctsd[6];
@@ -1656,7 +1656,7 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 16;
+    depth = 20;
     final_depth = 20;
     long long strt = tim();
     search_result result;
@@ -1695,7 +1695,7 @@ int main(){
             if (policy != -1){
                 b = move(&b, policy);
                 ++n_stones;
-                result = search(b, strt, depth - 1);
+                result = search(b, strt, 10);
                 print_result(policy, -result.value);
                 continue;
             }

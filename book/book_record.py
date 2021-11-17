@@ -92,9 +92,11 @@ for i in trange(127):
     except:
         print('cannot open', i)
         continue
-'''
-inf = 100000
-with open('third_party/records3.txt', 'r') as f:
+print(len(record_all))
+
+
+inf = 10000
+with open('third_party/records4.txt', 'r') as f:
     records = f.read().splitlines()
 for record in records:
     record_proc = ''
@@ -103,34 +105,27 @@ for record in records:
         y = int(record[i + 1]) - 1
         record_proc += all_chars[y * 8 + x]
         if not record_proc in record_all:
-            record_all[record_proc] = [1, inf]
+            record_all[record_proc] = [1000, inf]
         else:
-            record_all[record_proc][0] += 1
+            record_all[record_proc][0] += 1000
             record_all[record_proc][1] += inf
 print(len(record_all))
-'''
 print(black_win, white_win)
+
 
 book = {}
 
-max_ln = 40
+max_ln = 45
 
-num_threshold1 = 2
-num_threshold2 = 5
+num_threshold1 = 3
 
 inf = 100000000
 
 def calc_value(r):
-    if record_all[r][0] < num_threshold1:
+    if record_all[r][0] < num_threshold1 and record_all[r][1] < inf:
         return -inf
-    #if record_all[r][0] < num_threshold2 and record_all[r][1] < 0:
-    #    return -inf
-    #if translate(r) == 'F5D6':
-    #    return inf
     val = record_all[r][1] / record_all[r][0]
-    val += 0.1 * record_all[r][0]
-    #val += 0.1 * (1.0 - 2 ** (-0.1 * record_all[r][0]))
-    #print(r, record_all[r], val)
+    val += 0.01 * record_all[r][0]
     return val
 
 def create_book(record):
