@@ -156,9 +156,6 @@ def calc_value(r):
     if translate(r) == 'f5d6c3d3c4f4c5b3c2b4e3':
         print('d')
         return inf
-    if translate(r) == 'f5d6c3f4f6d3f3b3c7':
-        print('k')
-        return inf
     '''
     if translate(r) == 'f5d6c4d3c3f4f6f3e6e7f7c5b6g6e3e2f1d2e1c1':
         print('e')
@@ -178,7 +175,9 @@ def calc_value(r):
     if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b5a4a2a3a5c3':
         print('j')
         return inf
-    
+    if translate(r) == 'f5d6c3f4f6d3f3b3c7':
+        print('k')
+        return inf
     if translate(r) == 'f5f6e6f4e3c5c4e7c6e2f3f2g5g4h4':
         print('l')
         return inf
