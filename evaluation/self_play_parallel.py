@@ -1,18 +1,6 @@
 from math import tan, atan
 import subprocess
 
-f_weight = 0.000105
-ln_char = 27605
-ln_char_d2 = ln_char // 2
-
-def f(x):
-    return tan(f_weight * (x - ln_char_d2))
-
-def rev_f(y):
-    return round(atan(y) / f_weight + ln_char_d2)
-
-nums = [f(i) for i in range(ln_char)]
-
 play_num = 34560
 parallel_num = 6
 parallel_exe_num = play_num // parallel_num

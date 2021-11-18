@@ -135,14 +135,7 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6][mpc_max_depth - mpc_min_depth + 1]={
-    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.65, 1.65, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.55, 1.55, 1.55, 1.55, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5},
-    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4},
-    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4}
-};
+const double mpct[6]={1.6,1.6,1.6,1.5,1.4,1.4};
 const double mpcsd[6][mpc_max_depth - mpc_min_depth + 1]={
     {482, 512, 352, 298, 474, 372, 349, 323, 463, 335},
     {312, 381, 310, 261, 354, 322, 291, 313, 389, 371},
@@ -398,7 +391,7 @@ inline void init_mpc(){
     int i, j;
     for (i = 0; i < 6; ++i){
         for (j = 0; j < mpc_max_depth - mpc_min_depth + 1; ++j)
-            mpctsd[i][j] = (int)(mpct[i][j] * mpcsd[i][j]);
+            mpctsd[i][j] = (int)(mpct[i] * mpcsd[i][j]);
     }
 }
 
