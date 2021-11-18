@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <random>
+#include <thread>
 
 using namespace std;
 
@@ -134,7 +135,14 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6]={1.6,1.6,1.6,1.5,1.4,1.4};
+const double mpct[6][mpc_max_depth - mpc_min_depth + 1]={
+    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
+    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
+    {1.65, 1.65, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
+    {1.55, 1.55, 1.55, 1.55, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5},
+    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4},
+    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4}
+};
 const double mpcsd[6][mpc_max_depth - mpc_min_depth + 1]={
     {482, 512, 352, 298, 474, 372, 349, 323, 463, 335},
     {312, 381, 310, 261, 354, 322, 291, 313, 389, 371},
@@ -390,7 +398,7 @@ inline void init_mpc(){
     int i, j;
     for (i = 0; i < 6; ++i){
         for (j = 0; j < mpc_max_depth - mpc_min_depth + 1; ++j)
-            mpctsd[i][j] = (int)(mpct[i] * mpcsd[i][j]);
+            mpctsd[i][j] = (int)(mpct[i][j] * mpcsd[i][j]);
     }
 }
 
@@ -808,44 +816,30 @@ inline int sfill1(int b){
 }
 
 inline int calc_canput(const board *b){
-    int res = 0;
-    for (int i = 0; i < 16; ++i)
-        res += canput_arr[b->p][b->b[i]];
-    res += canput_arr[b->p][b->b[16] - p35 + 1] + canput_arr[b->p][b->b[26] - p35 + 1] + canput_arr[b->p][b->b[27] - p35 + 1] + canput_arr[b->p][b->b[37] - p35 + 1];
-    res += canput_arr[b->p][b->b[17] - p34 + 1] + canput_arr[b->p][b->b[25] - p34 + 1] + canput_arr[b->p][b->b[28] - p34 + 1] + canput_arr[b->p][b->b[36] - p34 + 1];
-    res += canput_arr[b->p][b->b[18] - p33 + 1] + canput_arr[b->p][b->b[24] - p33 + 1] + canput_arr[b->p][b->b[29] - p33 + 1] + canput_arr[b->p][b->b[35] - p33 + 1];
-    res += canput_arr[b->p][b->b[19] - p32 + 1] + canput_arr[b->p][b->b[23] - p32 + 1] + canput_arr[b->p][b->b[30] - p32 + 1] + canput_arr[b->p][b->b[34] - p32 + 1];
-    res += canput_arr[b->p][b->b[20] - p31 + 1] + canput_arr[b->p][b->b[22] - p31 + 1] + canput_arr[b->p][b->b[31] - p31 + 1] + canput_arr[b->p][b->b[33] - p31 + 1];
-    res += canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]];
-    if (b->p)
-        res = -res;
-    return res;
+    return (b->p ? -1 : 1) * 
+        canput_arr[b->p][b->b[0]] + canput_arr[b->p][b->b[1]] + canput_arr[b->p][b->b[2]] + canput_arr[b->p][b->b[3]] + 
+        canput_arr[b->p][b->b[4]] + canput_arr[b->p][b->b[5]] + canput_arr[b->p][b->b[6]] + canput_arr[b->p][b->b[7]] + 
+        canput_arr[b->p][b->b[8]] + canput_arr[b->p][b->b[9]] + canput_arr[b->p][b->b[10]] + canput_arr[b->p][b->b[11]] + 
+        canput_arr[b->p][b->b[12]] + canput_arr[b->p][b->b[13]] + canput_arr[b->p][b->b[14]] + canput_arr[b->p][b->b[15]] + 
+        canput_arr[b->p][b->b[16] - p35 + 1] + canput_arr[b->p][b->b[26] - p35 + 1] + canput_arr[b->p][b->b[27] - p35 + 1] + canput_arr[b->p][b->b[37] - p35 + 1] + 
+        canput_arr[b->p][b->b[17] - p34 + 1] + canput_arr[b->p][b->b[25] - p34 + 1] + canput_arr[b->p][b->b[28] - p34 + 1] + canput_arr[b->p][b->b[36] - p34 + 1] + 
+        canput_arr[b->p][b->b[18] - p33 + 1] + canput_arr[b->p][b->b[24] - p33 + 1] + canput_arr[b->p][b->b[29] - p33 + 1] + canput_arr[b->p][b->b[35] - p33 + 1] + 
+        canput_arr[b->p][b->b[19] - p32 + 1] + canput_arr[b->p][b->b[23] - p32 + 1] + canput_arr[b->p][b->b[30] - p32 + 1] + canput_arr[b->p][b->b[34] - p32 + 1] + 
+        canput_arr[b->p][b->b[20] - p31 + 1] + canput_arr[b->p][b->b[22] - p31 + 1] + canput_arr[b->p][b->b[31] - p31 + 1] + canput_arr[b->p][b->b[33] - p31 + 1] + 
+        canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]];
 }
 
-inline int calc_surround0(const board *b){
-    int res = 0;
-    for (int i = 0; i < 16; ++i)
-        res += surround_arr[0][b->b[i]];
-    res += surround_arr[0][sfill5(b->b[16])] + surround_arr[0][sfill5(b->b[26])] + surround_arr[0][sfill5(b->b[27])] + surround_arr[0][sfill5(b->b[37])];
-    res += surround_arr[0][sfill4(b->b[17])] + surround_arr[0][sfill4(b->b[25])] + surround_arr[0][sfill4(b->b[28])] + surround_arr[0][sfill4(b->b[36])];
-    res += surround_arr[0][sfill3(b->b[18])] + surround_arr[0][sfill3(b->b[24])] + surround_arr[0][sfill3(b->b[29])] + surround_arr[0][sfill3(b->b[35])];
-    res += surround_arr[0][sfill2(b->b[19])] + surround_arr[0][sfill2(b->b[23])] + surround_arr[0][sfill2(b->b[30])] + surround_arr[0][sfill2(b->b[34])];
-    res += surround_arr[0][sfill1(b->b[20])] + surround_arr[0][sfill1(b->b[22])] + surround_arr[0][sfill1(b->b[31])] + surround_arr[0][sfill1(b->b[33])];
-    res += surround_arr[0][b->b[21]] + surround_arr[0][b->b[32]];
-    return res;
-}
-
-inline int calc_surround1(const board *b){
-    int res = 0;
-    for (int i = 0; i < 16; ++i)
-        res += surround_arr[1][b->b[i]];
-    res += surround_arr[1][sfill5(b->b[16])] + surround_arr[1][sfill5(b->b[26])] + surround_arr[1][sfill5(b->b[27])] + surround_arr[1][sfill5(b->b[37])];
-    res += surround_arr[1][sfill4(b->b[17])] + surround_arr[1][sfill4(b->b[25])] + surround_arr[1][sfill4(b->b[28])] + surround_arr[1][sfill4(b->b[36])];
-    res += surround_arr[1][sfill3(b->b[18])] + surround_arr[1][sfill3(b->b[24])] + surround_arr[1][sfill3(b->b[29])] + surround_arr[1][sfill3(b->b[35])];
-    res += surround_arr[1][sfill2(b->b[19])] + surround_arr[1][sfill2(b->b[23])] + surround_arr[1][sfill2(b->b[30])] + surround_arr[1][sfill2(b->b[34])];
-    res += surround_arr[1][sfill1(b->b[20])] + surround_arr[1][sfill1(b->b[22])] + surround_arr[1][sfill1(b->b[31])] + surround_arr[1][sfill1(b->b[33])];
-    res += surround_arr[1][b->b[21]] + surround_arr[1][b->b[32]];
-    return res;
+inline int calc_surround(const board *b, int p){
+    return surround_arr[p][b->b[0]] + surround_arr[p][b->b[1]] + surround_arr[p][b->b[2]] + surround_arr[p][b->b[3]] + 
+        surround_arr[p][b->b[4]] + surround_arr[p][b->b[5]] + surround_arr[p][b->b[6]] + surround_arr[p][b->b[7]] + 
+        surround_arr[p][b->b[8]] + surround_arr[p][b->b[9]] + surround_arr[p][b->b[10]] + surround_arr[p][b->b[11]] + 
+        surround_arr[p][b->b[12]] + surround_arr[p][b->b[13]] + surround_arr[p][b->b[14]] + surround_arr[p][b->b[15]] + 
+        surround_arr[p][sfill5(b->b[16])] + surround_arr[p][sfill5(b->b[26])] + surround_arr[p][sfill5(b->b[27])] + surround_arr[p][sfill5(b->b[37])] + 
+        surround_arr[p][sfill4(b->b[17])] + surround_arr[p][sfill4(b->b[25])] + surround_arr[p][sfill4(b->b[28])] + surround_arr[p][sfill4(b->b[36])] + 
+        surround_arr[p][sfill3(b->b[18])] + surround_arr[p][sfill3(b->b[24])] + surround_arr[p][sfill3(b->b[29])] + surround_arr[p][sfill3(b->b[35])] + 
+        surround_arr[p][sfill2(b->b[19])] + surround_arr[p][sfill2(b->b[23])] + surround_arr[p][sfill2(b->b[30])] + surround_arr[p][sfill2(b->b[34])] + 
+        surround_arr[p][sfill1(b->b[20])] + surround_arr[p][sfill1(b->b[22])] + surround_arr[p][sfill1(b->b[31])] + surround_arr[p][sfill1(b->b[33])] + 
+        surround_arr[p][b->b[21]] + surround_arr[p][b->b[32]];
 }
 
 inline int calc_phase_idx(const board *b){
@@ -889,17 +883,18 @@ inline void calc_pattern(const board *b, double arr[]){
 }
 
 inline int evaluate(const board *b){
-    int i, phase_idx = calc_phase_idx(b), canput, sur0, sur1;
-    double in_arr[n_all_input];
+    int phase_idx = calc_phase_idx(b), canput, sur0, sur1;
+    double in_arr[n_patterns];
     calc_pattern(b, in_arr);
     canput = min(max_canput * 2, max(0, max_canput + calc_canput(b)));
-    sur0 = min(max_surround, calc_surround0(b));
-    sur1 = min(max_surround, calc_surround1(b));
-    for (i = 0; i < n_add_dense1; ++i)
-        in_arr[11 + i] = add_arr[phase_idx][canput][sur0][sur1][i];
-    double res = all_bias[phase_idx];
-    for (i = 0; i < n_all_input; ++i)
-        res += in_arr[i] * all_dense[phase_idx][i];
+    sur0 = min(max_surround, calc_surround(b, 0));
+    sur1 = min(max_surround, calc_surround(b, 1));
+    double res = all_bias[phase_idx] + 
+        all_dense[phase_idx][0] * in_arr[0] + all_dense[phase_idx][1] * in_arr[1] + all_dense[phase_idx][2] * in_arr[2] + all_dense[phase_idx][3] * in_arr[3] + 
+        all_dense[phase_idx][4] * in_arr[4] + all_dense[phase_idx][5] * in_arr[5] + all_dense[phase_idx][6] * in_arr[6] + all_dense[phase_idx][7] * in_arr[7] + 
+        all_dense[phase_idx][8] * in_arr[8] + all_dense[phase_idx][9] * in_arr[9] + all_dense[phase_idx][10] * in_arr[10] + 
+        all_dense[phase_idx][11] * add_arr[phase_idx][canput][sur0][sur1][0] + all_dense[phase_idx][12] * add_arr[phase_idx][canput][sur0][sur1][1] + all_dense[phase_idx][13] * add_arr[phase_idx][canput][sur0][sur1][2] + all_dense[phase_idx][14] * add_arr[phase_idx][canput][sur0][sur1][3] + 
+        all_dense[phase_idx][15] * add_arr[phase_idx][canput][sur0][sur1][4] + all_dense[phase_idx][16] * add_arr[phase_idx][canput][sur0][sur1][5] + all_dense[phase_idx][17] * add_arr[phase_idx][canput][sur0][sur1][6] + all_dense[phase_idx][18] * add_arr[phase_idx][canput][sur0][sur1][7];
     if (b->p)
         res = -res;
     return (int)(max(-1.0, min(1.0, res)) * sc_w);
@@ -1135,9 +1130,9 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
     if (mpc_min_depth <= depth && depth <= mpc_max_depth){
-        if (mpc_higher(b, skipped, depth, beta + 12 * step))
+        if (mpc_higher(b, skipped, depth, beta + 3 * step))
             return beta + step;
-        if (mpc_lower(b, skipped, depth, alpha - 12 * step))
+        if (mpc_lower(b, skipped, depth, alpha - 3 * step))
             return alpha - step;
     }
     if (depth <= 8)

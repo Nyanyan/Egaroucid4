@@ -1,13 +1,9 @@
 from math import tan, atan
-from time import time
-from random import randrange
 import subprocess
-from tqdm import trange
 
 f_weight = 0.000105
 ln_char = 27605
 ln_char_d2 = ln_char // 2
-tl = 10000000000
 
 def f(x):
     return tan(f_weight * (x - ln_char_d2))

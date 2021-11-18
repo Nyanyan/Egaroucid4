@@ -668,7 +668,7 @@ inline void pre_evaluation_add(int phase_idx, double dense0[n_add_dense0][n_add_
 }
 
 inline void init_evaluation(){
-    ifstream ifs("param/param.txt");
+    ifstream ifs("evaluation/param/param.txt");
     if (ifs.fail()){
         cerr << "evaluation file not exist" << endl;
         exit(1);
@@ -1465,6 +1465,25 @@ int mtd_final(const board *b, const long long strt, bool skipped, int depth, int
     return l * step;
 }
 
+void search_thread(board *b, long long strt, int depth, int alpha, int beta, int idx, int search_nega_scout_result[35]){
+    int g = -nega_alpha_ordering(b, strt, false, depth, -alpha - epsilon, -alpha);
+    if (g == inf){
+        search_nega_scout_result[idx] = -inf;
+        return;
+    }
+    if (alpha < g){
+        g = -mtd(b, strt, false, depth, -beta, -g);
+        if (g == inf){
+            search_nega_scout_result[idx] = -inf;
+            return;
+        }
+        register_search(1 - f_search_table_idx, b->b, (int)(calc_hash(b->b) & search_hash_mask), g, g);
+    } else{
+        register_search(1 - f_search_table_idx, b->b, (int)(calc_hash(b->b) & search_hash_mask), -inf, g);
+    }
+    search_nega_scout_result[idx] = g;
+}
+
 inline search_result search(const board b, long long strt, int max_depth){
     vector<board> nb;
     int i;
@@ -1491,6 +1510,7 @@ inline search_result search(const board b, long long strt, int max_depth){
     hash_get = 0;
     hash_reg = 0;
     int order_l, order_u;
+    int search_nega_scout_result[35];
     for (int depth = min(5, max(1, max_depth - 5)); depth < min(hw2 - b.n, max_depth); ++depth){
         alpha = -sc_w - epsilon;
         beta = sc_w + epsilon;
@@ -1512,19 +1532,16 @@ inline search_result search(const board b, long long strt, int max_depth){
             break;
         register_search(1 - f_search_table_idx, nb[0].b, (int)(calc_hash(nb[0].b) & search_hash_mask), g, g);
         alpha = max(alpha, g);
-        tmp_policy = nb[0].policy;
-        for (i = 1; i < canput; ++i){
-            g = -nega_alpha_ordering(&nb[i], strt, false, depth, -alpha - epsilon, -alpha);
-            if (alpha < g){
-                alpha = g;
-                g = -mtd(&nb[i], strt, false, depth, -beta, -alpha);
-                register_search(1 - f_search_table_idx, nb[i].b, (int)(calc_hash(nb[i].b) & search_hash_mask), g, g);
-                if (alpha < g){
-                    alpha = g;
-                    tmp_policy = nb[i].policy;
-                }
-            } else{
-                register_search(1 - f_search_table_idx, nb[i].b, (int)(calc_hash(nb[i].b) & search_hash_mask), -inf, g);
+        search_nega_scout_result[0] = g;
+        vector<thread> threads;
+        for (i = 1; i < canput; ++i)
+            threads.emplace_back(search_thread, &nb[i], strt, depth, alpha, beta, i, search_nega_scout_result);
+        for(auto& t : threads)
+            t.join();
+        for (i = 0; i < canput; ++i){
+            if (alpha < search_nega_scout_result[i]){
+                alpha = search_nega_scout_result[i];
+                tmp_policy = nb[i].policy;
             }
         }
         f_search_table_idx = 1 - f_search_table_idx;
@@ -1589,7 +1606,7 @@ inline search_result final_search(const board b, long long strt){
     tmp_policy = nb[0].policy;
     for (i = 1; i < canput; ++i){
         g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - step, -alpha);
-        if (alpha < g){
+        if (alpha <= g){
             g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -g);
             if (alpha < g){
                 alpha = g;
@@ -1664,8 +1681,8 @@ int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 15;
-    final_depth = 18;
+    depth = 16;
+    final_depth = 20;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
@@ -1677,13 +1694,14 @@ int main(){
     init_included();
     init_pop_digit();
     init_mpc();
-    //init_book();
+    init_book();
     cerr << "book initialized in " << tim() - strt << " ms" << endl;
     init_evaluation();
     f_search_table_idx = 0;
     search_hash_table_init(f_search_table_idx);
     search_hash_table_init(1 - f_search_table_idx);
     cerr << "iniitialized in " << tim() - strt << " ms" << endl;
+    cerr << "max_thread: "  << thread::hardware_concurrency() << endl;
     while (true){
         n_stones = input_board(b.b);
         strt = tim();
@@ -1692,6 +1710,22 @@ int main(){
         b.n = n_stones;
         b.p = ai_player;
         cerr << "value: " << evaluate(&b) << endl;
+        if (n_stones == 4){
+            policy = 37;
+            print_result(policy, 0);
+            continue;
+        }
+        if (n_stones < book_stones){
+            policy = get_book(b.b);
+            cerr << "book policy " << policy << endl;
+            if (policy != -1){
+                b = move(&b, policy);
+                ++n_stones;
+                result = search(b, strt, 10);
+                print_result(policy, -result.value);
+                continue;
+            }
+        }
         if (n_stones >= hw2 - final_depth)
             result = final_search(b, strt);
         else

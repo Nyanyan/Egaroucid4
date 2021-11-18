@@ -242,3 +242,8 @@ def self_play():
                 f.write(datum + ' ' + str(result) + '\n')
 
 self_play()
+for j in range(2):
+    try:
+        ais[j].kill()
+    except:
+        continue

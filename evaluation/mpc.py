@@ -30,8 +30,8 @@ sleep(1)
 min_depth = 1
 max_depth = 10
 
-vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
-vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
+vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(12)]
+vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(12)]
 
 vh_vd = []
 
@@ -61,10 +61,10 @@ def collect_data(num):
         evaluate.stdin.flush()
         vd, vh = [float(i) for i in evaluate.stdout.readline().decode().strip().split()]
         #print(score)
-        vhs[(n_stones - 4) // 10][depth - min_depth].append(vh)
-        vds[(n_stones - 4) // 10][depth - min_depth].append(vd)
+        vhs[(n_stones - 4) // 5][depth - min_depth].append(vh)
+        vds[(n_stones - 4) // 5][depth - min_depth].append(vd)
 
-for i in range(10):
+for i in range(30):
     collect_data(i)
 
 start_temp = 1000.0
@@ -120,8 +120,8 @@ while time() - strt < tl:
 print(f_score)
 '''
 
-vh_vd = [[[vhs[i][j][k] - f(vds[i][j][k]) for k in range(len(vhs[i][j]))] for j in range(len(vhs[i]))] for i in range(6)]
-sd = [[round(statistics.stdev(vh_vd[i][j])) for j in range(len(vh_vd[i]))] for i in range(6)]
+vh_vd = [[[vhs[i][j][k] - f(vds[i][j][k]) for k in range(len(vhs[i][j]))] for j in range(len(vhs[i]))] for i in range(len(vhs))]
+sd = [[round(statistics.stdev(vh_vd[i][j])) for j in range(len(vh_vd[i]))] for i in range(len(vh_vd))]
 for each_sd in sd:
     print(str(each_sd).replace('[', '{').replace(']', '}') + ',')
 evaluate.kill()
