@@ -28,10 +28,10 @@ evaluate = subprocess.Popen('./mpc.out'.split(), stdin=subprocess.PIPE, stdout=s
 sleep(1)
 
 min_depth = 1
-max_depth = 10
+max_depth = 12
 
-vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(12)]
-vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(12)]
+vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
+vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
 
 vh_vd = []
 
@@ -61,8 +61,8 @@ def collect_data(num):
         evaluate.stdin.flush()
         vd, vh = [float(i) for i in evaluate.stdout.readline().decode().strip().split()]
         #print(score)
-        vhs[(n_stones - 4) // 5][depth - min_depth].append(vh)
-        vds[(n_stones - 4) // 5][depth - min_depth].append(vd)
+        vhs[(n_stones - 4) // 10][depth - min_depth].append(vh)
+        vds[(n_stones - 4) // 10][depth - min_depth].append(vd)
 
 for i in range(30):
     collect_data(i)
