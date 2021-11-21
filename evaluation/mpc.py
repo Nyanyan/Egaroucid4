@@ -28,14 +28,14 @@ evaluate = subprocess.Popen('./mpc.out'.split(), stdin=subprocess.PIPE, stdout=s
 sleep(1)
 
 min_depth = 1
-max_depth = 12
+max_depth = 10
 
 vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
 vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
 
 vh_vd = []
 
-mpcd = [0, 0, 0, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7, 8]
+mpcd = [0, 0, 0, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7]
 
 
 def collect_data(num):

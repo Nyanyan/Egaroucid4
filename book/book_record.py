@@ -175,9 +175,11 @@ def calc_value(r):
     if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b5a4a2a3a5c3':
         print('j')
         return inf
+    '''
     if translate(r) == 'f5d6c3f4f6d3f3b3c7':
         print('k')
         return inf
+    '''
     if translate(r) == 'f5f6e6f4e3c5c4e7c6e2f3f2g5g4h4':
         print('l')
         return inf
@@ -197,6 +199,18 @@ def calc_value(r):
         print('q')
         return inf
     '''
+    if translate(r) == 'f5d6c3d3c4f4c5b3c2b4e3e6c6g4f6b6g6e7b5g5f3f7a6a5d7':
+        print('r')
+        return inf
+    if translate(r) == 'f5d6c3d3c4f4c5b3c2f6a3b5b6e3f2e2b4a4a5':
+        print('s')
+        return inf
+    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7c6g6h6c5b6d7':
+        print('t')
+        return inf
+    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b6c3b5a6g6g5':
+        print('u')
+        return inf
     if record_all[r][0] < num_threshold1 and record_all[r][1] < inf:
         return -inf
     val = record_all[r][1] / record_all[r][0]
