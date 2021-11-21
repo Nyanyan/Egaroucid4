@@ -211,6 +211,9 @@ def calc_value(r):
     if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b6c3b5a6g6g5':
         print('u')
         return inf
+    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7d7g6f8f7g5h6h4g4h3h5h7c5b4e8d8b5e3d2':
+        print('v')
+        return inf
     if record_all[r][0] < num_threshold1 and record_all[r][1] < inf:
         return -inf
     val = record_all[r][1] / record_all[r][0]

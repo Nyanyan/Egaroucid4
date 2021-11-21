@@ -54,10 +54,9 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 #define cache_hit 10000
 #define cache_both 1000
 #define mtd_threshold 400
-#define complete_read_depth 25
 
 #define mpc_min_depth 1
-#define mpc_max_depth 12
+#define mpc_max_depth 10
 
 #define p31 3
 #define p32 9
@@ -858,8 +857,7 @@ inline double cross(int phase_idx, const int b[], int x, int y, int z){
         pattern_arr[phase_idx][10][reverse_board[b[x]] / p34 * p36 + pop_mid[reverse_board[b[y]]][7][4] * p33 + pop_mid[reverse_board[b[z]]][7][4]];
 }
 
-inline double calc_pattern(const board *b){
-    int phase_idx = calc_phase_idx(b);
+inline double calc_pattern(int phase_idx, const board *b){
     return all_dense[phase_idx][0] * (pattern_arr[phase_idx][0][b->b[1]] + pattern_arr[phase_idx][0][b->b[6]] + pattern_arr[phase_idx][0][b->b[9]] + pattern_arr[phase_idx][0][b->b[14]]) + 
         all_dense[phase_idx][1] * (pattern_arr[phase_idx][1][b->b[2]] + pattern_arr[phase_idx][1][b->b[5]] + pattern_arr[phase_idx][1][b->b[10]] + pattern_arr[phase_idx][1][b->b[13]]) + 
         all_dense[phase_idx][2] * (pattern_arr[phase_idx][2][b->b[3]] + pattern_arr[phase_idx][2][b->b[4]] + pattern_arr[phase_idx][2][b->b[11]] + pattern_arr[phase_idx][2][b->b[12]]) + 
@@ -878,7 +876,7 @@ inline int evaluate(const board *b){
     canput = min(max_canput * 2, max(0, max_canput + calc_canput(b)));
     sur0 = min(max_surround, calc_surround(b, 0));
     sur1 = min(max_surround, calc_surround(b, 1));
-    double res = all_bias[phase_idx] + calc_pattern(b) + 
+    double res = all_bias[phase_idx] + calc_pattern(phase_idx, b) + 
         all_dense[phase_idx][11] * add_arr[phase_idx][canput][sur0][sur1][0] + all_dense[phase_idx][12] * add_arr[phase_idx][canput][sur0][sur1][1] + all_dense[phase_idx][13] * add_arr[phase_idx][canput][sur0][sur1][2] + all_dense[phase_idx][14] * add_arr[phase_idx][canput][sur0][sur1][3] + 
         all_dense[phase_idx][15] * add_arr[phase_idx][canput][sur0][sur1][4] + all_dense[phase_idx][16] * add_arr[phase_idx][canput][sur0][sur1][5] + all_dense[phase_idx][17] * add_arr[phase_idx][canput][sur0][sur1][6] + all_dense[phase_idx][18] * add_arr[phase_idx][canput][sur0][sur1][7];
     if (b->p)
@@ -1259,6 +1257,12 @@ int nega_alpha(const board *b, bool skipped, int depth, int alpha, int beta){
         else
             return end_game(b);
     }
+    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
+        if (mpc_higher(b, skipped, depth, beta + epsilon))
+            return beta + epsilon;
+        if (mpc_lower(b, skipped, depth, alpha - epsilon))
+            return alpha - epsilon;
+    }
     board nb;
     bool passed = true;
     int g, v = -inf;
@@ -1327,7 +1331,7 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
         if (place_included[cell][3] != -1)
             legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
         if (legal){
-            nb.push_back(move(b, cell));
+            nb.emplace_back(move(b, cell));
             move_ordering(&(nb[canput]));
             ++canput;
         }
@@ -1391,7 +1395,7 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
         if (place_included[cell][3] != -1)
             legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
         if (legal){
-            nb.push_back(move(b, cell));
+            nb.emplace_back(move(b, cell));
             move_ordering(&(nb[canput]));
             ++canput;
         }
@@ -1417,12 +1421,10 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
                     register_search(1 - f_search_table_idx, b->b, hash, g, u);
                 return g;
             }
-            alpha = max(alpha, g);
             v = max(v, g);
         }
         if (alpha <= g){
-            alpha = g;
-            g = -nega_scout(&nnb, strt, false, depth - 1, -beta, -alpha);
+            g = -nega_scout(&nnb, strt, false, depth - 1, -beta, -g);
             if (beta <= g){
                 if (l < g)
                     register_search(1 - f_search_table_idx, b->b, hash, g, u);
