@@ -54,7 +54,6 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 #define cache_hit 10000
 #define cache_both 1000
 #define mtd_threshold 400
-#define complete_read_depth 25
 
 #define mpc_min_depth 1
 #define mpc_max_depth 10
@@ -135,24 +134,17 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6][mpc_max_depth - mpc_min_depth + 1]={
-    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.65, 1.65, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6},
-    {1.55, 1.55, 1.55, 1.55, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5},
-    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4},
-    {1.45, 1.45, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4}
-};
+const double mpct[6]={1.5,1.5,1.5,1.5,1.5,1.4};
 const double mpcsd[6][mpc_max_depth - mpc_min_depth + 1]={
-    {482, 512, 352, 298, 474, 372, 349, 323, 463, 335},
-    {312, 381, 310, 261, 354, 322, 291, 313, 389, 371},
-    {389, 463, 392, 352, 548, 402, 422, 441, 530, 538},
-    {417, 490, 436, 405, 570, 494, 452, 438, 527, 524},
-    {486, 554, 519, 463, 635, 665, 555, 550, 635, 581},
-    {433, 517, 430, 391, 560, 556, 383, 345, 567, 332}
+    {462, 469, 378, 289, 475, 367, 574, 470, 473, 374},
+    {318, 359, 324, 283, 368, 331, 426, 373, 412, 414},
+    {395, 478, 440, 388, 521, 431, 581, 485, 466, 501},
+    {414, 489, 410, 371, 565, 491, 625, 592, 534, 538},
+    {510, 611, 508, 485, 721, 597, 757, 726, 689, 653},
+    {469, 497, 424, 398, 591, 492, 663, 525, 452, 395}
 };
-const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
-int mpctsd[6][mpc_max_depth - mpc_min_depth + 1];
+const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
+int mpctsd[6][mpc_max_depth + 1];
 
 vector<int> vacant_lst;
 book_node *book[book_hash_table_size];
@@ -398,27 +390,25 @@ inline void init_mpc(){
     int i, j;
     for (i = 0; i < 6; ++i){
         for (j = 0; j < mpc_max_depth - mpc_min_depth + 1; ++j)
-            mpctsd[i][j] = (int)(mpct[i][j] * mpcsd[i][j]);
+            mpctsd[i][mpc_min_depth + j] = (int)(mpct[i] * mpcsd[i][j]);
     }
 }
 
+inline void flip(const board *b, board *res, int g_place){
+    res->b[place_included[g_place][0]] = flip_arr[b->p][res->b[place_included[g_place][0]]][local_place[place_included[g_place][0]][g_place]];
+    res->b[place_included[g_place][1]] = flip_arr[b->p][res->b[place_included[g_place][1]]][local_place[place_included[g_place][1]][g_place]];
+    res->b[place_included[g_place][2]] = flip_arr[b->p][res->b[place_included[g_place][2]]][local_place[place_included[g_place][2]][g_place]];
+    if (place_included[g_place][3] != -1)
+        res->b[place_included[g_place][3]] = flip_arr[b->p][res->b[place_included[g_place][3]]][local_place[place_included[g_place][3]][g_place]];
+}
+
 inline void move_p(const board *b, board *res, int global_place, int i){
-    int j, k, place, g_place;
+    int j, place;
     place = local_place[place_included[global_place][i]][global_place];
-    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][0]; ++j){
-        g_place = global_place - move_offset[place_included[global_place][i]] * j;
-        for (k = 0; k < 3; ++k)
-            res->b[place_included[g_place][k]] = flip_arr[b->p][res->b[place_included[g_place][k]]][local_place[place_included[g_place][k]][g_place]];
-        if (place_included[g_place][3] != -1)
-            res->b[place_included[g_place][3]] = flip_arr[b->p][res->b[place_included[g_place][3]]][local_place[place_included[g_place][3]][g_place]];
-    }
-    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][1]; ++j){
-        g_place = global_place + move_offset[place_included[global_place][i]] * j;
-        for (k = 0; k < 3; ++k)
-            res->b[place_included[g_place][k]] = flip_arr[b->p][res->b[place_included[g_place][k]]][local_place[place_included[g_place][k]][g_place]];
-        if (place_included[g_place][3] != -1)
-            res->b[place_included[g_place][3]] = flip_arr[b->p][res->b[place_included[g_place][3]]][local_place[place_included[g_place][3]][g_place]];
-    }
+    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][0]; ++j)
+        flip(b, res, global_place - move_offset[place_included[global_place][i]] * j);
+    for (j = 1; j <= move_arr[b->p][b->b[place_included[global_place][i]]][place][1]; ++j)
+        flip(b, res, global_place + move_offset[place_included[global_place][i]] * j);
 }
 
 inline board move(const board *b, const int global_place){
@@ -867,32 +857,26 @@ inline double cross(int phase_idx, const int b[], int x, int y, int z){
         pattern_arr[phase_idx][10][reverse_board[b[x]] / p34 * p36 + pop_mid[reverse_board[b[y]]][7][4] * p33 + pop_mid[reverse_board[b[z]]][7][4]];
 }
 
-inline void calc_pattern(const board *b, double arr[]){
-    int phase_idx = calc_phase_idx(b);
-    arr[0] = pattern_arr[phase_idx][0][b->b[1]] + pattern_arr[phase_idx][0][b->b[6]] + pattern_arr[phase_idx][0][b->b[9]] + pattern_arr[phase_idx][0][b->b[14]];
-    arr[1] = pattern_arr[phase_idx][1][b->b[2]] + pattern_arr[phase_idx][1][b->b[5]] + pattern_arr[phase_idx][1][b->b[10]] + pattern_arr[phase_idx][1][b->b[13]];
-    arr[2] = pattern_arr[phase_idx][2][b->b[3]] + pattern_arr[phase_idx][2][b->b[4]] + pattern_arr[phase_idx][2][b->b[11]] + pattern_arr[phase_idx][2][b->b[12]];
-    arr[3] = pattern_arr[phase_idx][3][b->b[18] / p33] + pattern_arr[phase_idx][3][b->b[24] / p33] + pattern_arr[phase_idx][3][b->b[29] / p33] + pattern_arr[phase_idx][3][b->b[35] / p33];
-    arr[4] = pattern_arr[phase_idx][4][b->b[19] / p32] + pattern_arr[phase_idx][4][b->b[23] / p32] + pattern_arr[phase_idx][4][b->b[30] / p32] + pattern_arr[phase_idx][4][b->b[34] / p32];
-    arr[5] = pattern_arr[phase_idx][5][b->b[20] / p31] + pattern_arr[phase_idx][5][b->b[22] / p31] + pattern_arr[phase_idx][5][b->b[31] / p31] + pattern_arr[phase_idx][5][b->b[33] / p31];
-    arr[6] = pattern_arr[phase_idx][6][b->b[21]] + pattern_arr[phase_idx][6][b->b[32]];
-    arr[7] = edge_2x(phase_idx, b->b, 1, 0) + edge_2x(phase_idx, b->b, 6, 7) + edge_2x(phase_idx, b->b, 9, 8) + edge_2x(phase_idx, b->b, 14, 15);
-    arr[8] = triangle0(phase_idx, b->b, 0, 1, 2, 3) + triangle0(phase_idx, b->b, 7, 6, 5, 4) + triangle0(phase_idx, b->b, 15, 14, 13, 12) + triangle1(phase_idx, b->b, 15, 14, 13, 12);
-    arr[9] = edge_block(phase_idx, b->b, 0, 1) + edge_block(phase_idx, b->b, 7, 6) + edge_block(phase_idx, b->b, 8, 9) + edge_block(phase_idx, b->b, 15, 14);
-    arr[10] = cross(phase_idx, b->b, 21, 20, 22) + cross(phase_idx, b->b, 32, 31, 33);
+inline double calc_pattern(int phase_idx, const board *b){
+    return all_dense[phase_idx][0] * (pattern_arr[phase_idx][0][b->b[1]] + pattern_arr[phase_idx][0][b->b[6]] + pattern_arr[phase_idx][0][b->b[9]] + pattern_arr[phase_idx][0][b->b[14]]) + 
+        all_dense[phase_idx][1] * (pattern_arr[phase_idx][1][b->b[2]] + pattern_arr[phase_idx][1][b->b[5]] + pattern_arr[phase_idx][1][b->b[10]] + pattern_arr[phase_idx][1][b->b[13]]) + 
+        all_dense[phase_idx][2] * (pattern_arr[phase_idx][2][b->b[3]] + pattern_arr[phase_idx][2][b->b[4]] + pattern_arr[phase_idx][2][b->b[11]] + pattern_arr[phase_idx][2][b->b[12]]) + 
+        all_dense[phase_idx][3] * (pattern_arr[phase_idx][3][b->b[18] / p33] + pattern_arr[phase_idx][3][b->b[24] / p33] + pattern_arr[phase_idx][3][b->b[29] / p33] + pattern_arr[phase_idx][3][b->b[35] / p33]) + 
+        all_dense[phase_idx][4] * (pattern_arr[phase_idx][4][b->b[19] / p32] + pattern_arr[phase_idx][4][b->b[23] / p32] + pattern_arr[phase_idx][4][b->b[30] / p32] + pattern_arr[phase_idx][4][b->b[34] / p32]) + 
+        all_dense[phase_idx][5] * (pattern_arr[phase_idx][5][b->b[20] / p31] + pattern_arr[phase_idx][5][b->b[22] / p31] + pattern_arr[phase_idx][5][b->b[31] / p31] + pattern_arr[phase_idx][5][b->b[33] / p31]) + 
+        all_dense[phase_idx][6] * (pattern_arr[phase_idx][6][b->b[21]] + pattern_arr[phase_idx][6][b->b[32]]) + 
+        all_dense[phase_idx][7] * (edge_2x(phase_idx, b->b, 1, 0) + edge_2x(phase_idx, b->b, 6, 7) + edge_2x(phase_idx, b->b, 9, 8) + edge_2x(phase_idx, b->b, 14, 15)) + 
+        all_dense[phase_idx][8] * (triangle0(phase_idx, b->b, 0, 1, 2, 3) + triangle0(phase_idx, b->b, 7, 6, 5, 4) + triangle0(phase_idx, b->b, 15, 14, 13, 12) + triangle1(phase_idx, b->b, 15, 14, 13, 12)) + 
+        all_dense[phase_idx][9] * (edge_block(phase_idx, b->b, 0, 1) + edge_block(phase_idx, b->b, 7, 6) + edge_block(phase_idx, b->b, 8, 9) + edge_block(phase_idx, b->b, 15, 14)) + 
+        all_dense[phase_idx][10] * (cross(phase_idx, b->b, 21, 20, 22) + cross(phase_idx, b->b, 32, 31, 33));
 }
 
 inline int evaluate(const board *b){
     int phase_idx = calc_phase_idx(b), canput, sur0, sur1;
-    double in_arr[n_patterns];
-    calc_pattern(b, in_arr);
     canput = min(max_canput * 2, max(0, max_canput + calc_canput(b)));
     sur0 = min(max_surround, calc_surround(b, 0));
     sur1 = min(max_surround, calc_surround(b, 1));
-    double res = all_bias[phase_idx] + 
-        all_dense[phase_idx][0] * in_arr[0] + all_dense[phase_idx][1] * in_arr[1] + all_dense[phase_idx][2] * in_arr[2] + all_dense[phase_idx][3] * in_arr[3] + 
-        all_dense[phase_idx][4] * in_arr[4] + all_dense[phase_idx][5] * in_arr[5] + all_dense[phase_idx][6] * in_arr[6] + all_dense[phase_idx][7] * in_arr[7] + 
-        all_dense[phase_idx][8] * in_arr[8] + all_dense[phase_idx][9] * in_arr[9] + all_dense[phase_idx][10] * in_arr[10] + 
+    double res = all_bias[phase_idx] + calc_pattern(phase_idx, b) + 
         all_dense[phase_idx][11] * add_arr[phase_idx][canput][sur0][sur1][0] + all_dense[phase_idx][12] * add_arr[phase_idx][canput][sur0][sur1][1] + all_dense[phase_idx][13] * add_arr[phase_idx][canput][sur0][sur1][2] + all_dense[phase_idx][14] * add_arr[phase_idx][canput][sur0][sur1][3] + 
         all_dense[phase_idx][15] * add_arr[phase_idx][canput][sur0][sur1][4] + all_dense[phase_idx][16] * add_arr[phase_idx][canput][sur0][sur1][5] + all_dense[phase_idx][17] * add_arr[phase_idx][canput][sur0][sur1][6] + all_dense[phase_idx][18] * add_arr[phase_idx][canput][sur0][sur1][7];
     if (b->p)
@@ -901,12 +885,10 @@ inline int evaluate(const board *b){
 }
 
 inline int end_game(const board *b){
-    int count = 0;
-    int vacant = hw2;
-    for (int idx = 0; idx < hw; ++idx){
-        count += count_arr[b->b[idx]];
-        vacant -= count_all_arr[b->b[idx]];
-    }
+    int count = count_arr[b->b[0]] + count_arr[b->b[1]] + count_arr[b->b[2]] + count_arr[b->b[3]] + 
+                count_arr[b->b[4]] + count_arr[b->b[5]] + count_arr[b->b[6]] + count_arr[b->b[7]];
+    int vacant = hw2 - count_all_arr[b->b[0]] - count_all_arr[b->b[1]] - count_all_arr[b->b[2]] - count_all_arr[b->b[3]] - 
+                count_all_arr[b->b[4]] - count_all_arr[b->b[5]] - count_all_arr[b->b[6]] - count_all_arr[b->b[7]];
     if (b->p)
         count = -count;
     if (count > 0)
@@ -916,18 +898,18 @@ inline int end_game(const board *b){
     return count * step;
 }
 
-int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta);
+int nega_alpha(const board *b, bool skipped, int depth, int alpha, int beta);
 
 inline bool mpc_higher(const board *b, bool skipped, int depth, int beta){
     //return false;
-    int bound = beta + mpctsd[(b->n - 4) / 10][depth - mpc_max_depth];
-    return nega_alpha(b, tim(), skipped, mpcd[depth], bound - epsilon, bound) >= bound;
+    int bound = beta + mpctsd[(b->n - 4) / 10][depth];
+    return nega_alpha(b, skipped, mpcd[depth], bound - epsilon, bound) >= bound;
 }
 
 inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
     //return false;
-    int bound = alpha - mpctsd[(b->n - 4) / 10][depth - mpc_max_depth];
-    return nega_alpha(b, tim(), skipped, mpcd[depth], bound, bound + epsilon) <= bound;
+    int bound = alpha - mpctsd[(b->n - 4) / 10][depth];
+    return nega_alpha(b, skipped, mpcd[depth], bound, bound + epsilon) <= bound;
 }
 
 inline void move_ordering(board *b){
@@ -958,7 +940,7 @@ inline int last1(const board *b, bool skipped, int p0){
         if (skipped)
             return end_game(b);
         board rb;
-        for (int i = 0; i < b_idx_num; ++i)
+        for (i = 0; i < b_idx_num; ++i)
             rb.b[i] = b->b[i];
         rb.p = 1 - b->p;
         rb.n = b->n;
@@ -1064,7 +1046,7 @@ inline int last3(const board *b, bool skipped, int alpha, int beta, int p0, int 
         if (skipped)
             return end_game(b);
         board rb;
-        for (int i = 0; i < b_idx_num; ++i)
+        for (i = 0; i < b_idx_num; ++i)
             rb.b[i] = b->b[i];
         rb.p = 1 - b->p;
         rb.n = b->n;
@@ -1081,7 +1063,8 @@ inline void pick_vacant(const board *b, int cells[]){
     }
 }
 
-int nega_alpha_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
+int nega_alpha_final(const board *b, bool skipped, int depth, int alpha, int beta){
+    //cerr << alpha << " " << beta << endl;
     if (b->n >= hw2 - 3){
         int cells[3];
         pick_vacant(b, cells);
@@ -1096,23 +1079,22 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
     ++searched_nodes;
     board nb;
     bool passed = true;
-    int i, v = -inf, g;
+    int g, v = -inf;
+    bool legal;
     for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    passed = false;
-                    nb = move(b, cell);
-                    g = -nega_alpha_final(&nb, strt, false, depth - 1, -beta, -alpha);
-                    alpha = max(alpha, g);
-                    v = max(v, g);
-                    if (beta <= alpha)
-                        return alpha;
-                    break;
-                }
-            }
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            passed = false;
+            nb = move(b, cell);
+            g = -nega_alpha_final(&nb, false, depth - 1, -beta, -alpha);
+            alpha = max(alpha, g);
+            if (beta <= alpha)
+                return alpha;
+            v = max(v, g);
         }
     }
     if (passed){
@@ -1122,35 +1104,29 @@ int nega_alpha_final(const board *b, const long long strt, bool skipped, int dep
             nb.b[i] = b->b[i];
         nb.p = 1 - b->p;
         nb.n = b->n;
-        return -nega_alpha_final(&nb, strt, true, depth, -beta, -alpha);
+        return -nega_alpha_final(&nb, true, depth, -beta, -alpha);
     }
     return v;
 }
 
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
-        if (mpc_higher(b, skipped, depth, beta + 3 * step))
-            return beta + step;
-        if (mpc_lower(b, skipped, depth, alpha - 3 * step))
-            return alpha - step;
-    }
-    if (depth <= 8)
-        return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
+    if (depth <= 9)
+        return nega_alpha_final(b, skipped, depth, alpha, beta);
     vector<board> nb;
-    int i, canput = 0;
+    int canput = 0;
+    bool legal;
     for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    nb.push_back(move(b, cell));
-                    move_ordering(&(nb[canput]));
-                    ++canput;
-                    break;
-                }
-            }
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            nb.push_back(move(b, cell));
+            nb[canput].v = -calc_canput_exact(&nb[canput]);
+            //move_ordering(&(nb[canput]));
+            ++canput;
         }
     }
     if (canput == 0){
@@ -1165,35 +1141,56 @@ int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped
     }
     if (canput >= 2)
         sort(nb.begin(), nb.end());
-    int g, v = -inf;
+    int hash = (int)(calc_hash(b->b) & search_hash_mask);
+    int l, u;
+    get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
+    if (l != -inf){
+        if (l == u)
+            return l;
+        alpha = max(alpha, l);
+        if (alpha >= beta)
+            return alpha;
+    }
+    if (u != -inf){
+        beta = min(beta, u);
+        if (alpha >= beta)
+            return beta;
+    }
+    int g, v = -inf, first_alpha = alpha;
     for (const board &nnb: nb){
         g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -beta, -alpha);
         alpha = max(alpha, g);
-        v = max(v, g);
-        if (beta <= alpha)
+        if (beta <= alpha){
+            if (l < g)
+                register_search(1 - f_search_table_idx, b->b, hash, alpha, u);
             return alpha;
+        }
+        v = max(v, g);
     }
+    if (v <= first_alpha)
+        register_search(1 - f_search_table_idx, b->b, hash, l, v);
+    else
+        register_search(1 - f_search_table_idx, b->b, hash, v, v);
     return v;
 }
 
 int nega_scout_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (depth <= 8)
-        return nega_alpha_final(b, strt, skipped, depth, alpha, beta);
+    if (depth <= 9)
+        return nega_alpha_final(b, skipped, depth, alpha, beta);
     vector<board> nb;
-    int i, canput = 0;
+    int canput = 0;
+    bool legal;
     for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    nb.push_back(move(b, cell));
-                    move_ordering(&(nb[canput]));
-                    ++canput;
-                    break;
-                }
-            }
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            nb.push_back(move(b, cell));
+            move_ordering(&(nb[canput]));
+            ++canput;
         }
     }
     if (canput == 0){
@@ -1208,69 +1205,51 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
     }
     if (canput >= 2)
         sort(nb.begin(), nb.end());
-    int g = alpha, v = -inf;
+    int hash = (int)(calc_hash(b->b) & search_hash_mask);
+    int l, u;
+    get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
+    if (l != -inf){
+        if (l == u)
+            return l;
+        alpha = max(alpha, l);
+        if (alpha >= beta)
+            return alpha;
+    }
+    if (u != -inf){
+        beta = min(beta, u);
+        if (alpha >= beta)
+            return beta;
+    }
+    int g = alpha, v = -inf, first_alpha = alpha;
     for (const board &nnb: nb){
         if (&nnb - &nb[0]){
             g = -nega_alpha_ordering_final(&nnb, strt, false, depth - 1, -alpha - step, -alpha);
-            if (beta <= g)
+            if (beta <= g){
+                if (l < g)
+                    register_search(1 - f_search_table_idx, b->b, hash, g, u);
                 return g;
+            }
             v = max(v, g);
         }
         if (alpha <= g){
-            alpha = g;
-            g = -nega_scout_final(&nnb, strt, false, depth - 1, -beta, -alpha);
-            if (beta <= g)
+            g = -nega_scout_final(&nnb, strt, false, depth - 1, -beta, -g);
+            if (beta <= g){
+                if (l < g)
+                    register_search(1 - f_search_table_idx, b->b, hash, g, u);
                 return g;
+            }
             alpha = max(alpha, g);
             v = max(v, g);
         }
     }
+    if (v <= first_alpha)
+        register_search(1 - f_search_table_idx, b->b, hash, l, v);
+    else
+        register_search(1 - f_search_table_idx, b->b, hash, v, v);
     return v;
 }
 
-int nega_alpha(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
-    ++searched_nodes;
-    if (depth == 0){
-        if (b->n < hw2)
-            return evaluate(b);
-        else
-            return end_game(b);
-    }
-    board nb;
-    bool passed = true;
-    int i, g, v = -inf;
-    for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    passed = false;
-                    nb = move(b, cell);
-                    g = -nega_alpha(&nb, strt, false, depth - 1, -beta, -alpha);
-                    alpha = max(alpha, g);
-                    if (beta <= alpha)
-                        return alpha;
-                    v = max(v, g);
-                    break;
-                }
-            }
-        }
-    }
-    if (passed){
-        if (skipped)
-            return end_game(b);
-        board rb;
-        for (int i = 0; i < b_idx_num; ++i)
-            rb.b[i] = b->b[i];
-        rb.p = 1 - b->p;
-        rb.n = b->n;
-        return -nega_alpha(&rb, strt, true, depth, -beta, -alpha);
-    }
-    return v;
-}
-
-int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
+int nega_alpha(const board *b, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
     if (depth == 0){
         if (b->n < hw2)
@@ -1284,8 +1263,49 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
         if (mpc_lower(b, skipped, depth, alpha - epsilon))
             return alpha - epsilon;
     }
+    board nb;
+    bool passed = true;
+    int g, v = -inf;
+    bool legal;
+    for (const int &cell: vacant_lst){
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            passed = false;
+            nb = move(b, cell);
+            g = -nega_alpha(&nb, false, depth - 1, -beta, -alpha);
+            alpha = max(alpha, g);
+            if (beta <= alpha)
+                return alpha;
+            v = max(v, g);
+        }
+    }
+    if (passed){
+        if (skipped)
+            return end_game(b);
+        board rb;
+        for (int i = 0; i < b_idx_num; ++i)
+            rb.b[i] = b->b[i];
+        rb.p = 1 - b->p;
+        rb.n = b->n;
+        return -nega_alpha(&rb, true, depth, -beta, -alpha);
+    }
+    return v;
+}
+
+int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
+    ++searched_nodes;
+    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
+        if (mpc_higher(b, skipped, depth, beta + epsilon))
+            return beta + epsilon;
+        if (mpc_lower(b, skipped, depth, alpha - epsilon))
+            return alpha - epsilon;
+    }
     if (depth <= 3)
-        return nega_alpha(b, strt, skipped, depth, alpha, beta);
+        return nega_alpha(b, skipped, depth, alpha, beta);
     int hash = (int)(calc_hash(b->b) & search_hash_mask);
     int l, u;
     get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
@@ -1302,19 +1322,18 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
             return beta;
     }
     vector<board> nb;
-    int i, canput = 0;
+    int canput = 0;
+    bool legal;
     for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    nb.push_back(move(b, cell));
-                    move_ordering(&(nb[canput]));
-                    ++canput;
-                    break;
-                }
-            }
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            nb.emplace_back(move(b, cell));
+            move_ordering(&(nb[canput]));
+            ++canput;
         }
     }
     if (canput == 0){
@@ -1340,7 +1359,7 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
         alpha = max(alpha, g);
         v = max(v, g);
     }
-    if (v < first_alpha)
+    if (v <= first_alpha)
         register_search(1 - f_search_table_idx, b->b, hash, l, v);
     else
         register_search(1 - f_search_table_idx, b->b, hash, v, v);
@@ -1349,14 +1368,8 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
 
 int nega_scout(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (depth == 0){
-        if (b->n < hw2)
-            return evaluate(b);
-        else
-            return end_game(b);
-    }
     if (depth <= 3)
-        return nega_alpha(b, strt, skipped, depth, alpha, beta);
+        return nega_alpha(b, skipped, depth, alpha, beta);
     int hash = (int)(calc_hash(b->b) & search_hash_mask);
     int l, u;
     get_search(b->b, hash, 1 - f_search_table_idx, &l, &u);
@@ -1373,19 +1386,18 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
             return beta;
     }
     vector<board> nb;
-    int i, canput = 0;
+    int canput = 0;
+    bool legal;
     for (const int &cell: vacant_lst){
-        if (pop_digit[b->b[cell / hw]][cell % hw] == 2){
-            for (i = 0; i < 4; ++i){
-                if (place_included[cell][i] == -1)
-                    break;
-                if (legal_arr[b->p][b->b[place_included[cell][i]]][local_place[place_included[cell][i]][cell]]){
-                    nb.push_back(move(b, cell));
-                    move_ordering(&(nb[canput]));
-                    ++canput;
-                    break;
-                }
-            }
+        legal = legal_arr[b->p][b->b[place_included[cell][0]]][local_place[place_included[cell][0]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][1]]][local_place[place_included[cell][1]][cell]] || 
+                legal_arr[b->p][b->b[place_included[cell][2]]][local_place[place_included[cell][2]][cell]];
+        if (place_included[cell][3] != -1)
+            legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
+        if (legal){
+            nb.emplace_back(move(b, cell));
+            move_ordering(&(nb[canput]));
+            ++canput;
         }
     }
     if (canput == 0){
@@ -1412,8 +1424,7 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
             v = max(v, g);
         }
         if (alpha <= g){
-            alpha = g;
-            g = -nega_scout(&nnb, strt, false, depth - 1, -beta, -alpha);
+            g = -nega_scout(&nnb, strt, false, depth - 1, -beta, -g);
             if (beta <= g){
                 if (l < g)
                     register_search(1 - f_search_table_idx, b->b, hash, g, u);
@@ -1423,7 +1434,7 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
             v = max(v, g);
         }
     }
-    if (v < first_alpha)
+    if (v <= first_alpha)
         register_search(1 - f_search_table_idx, b->b, hash, l, v);
     else
         register_search(1 - f_search_table_idx, b->b, hash, v, v);
@@ -1491,7 +1502,7 @@ inline search_result search(const board b, long long strt, int max_depth){
     hash_get = 0;
     hash_reg = 0;
     int order_l, order_u;
-    for (int depth = min(5, max(1, max_depth - 5)); depth < min(hw2 - b.n, max_depth); ++depth){
+    for (int depth = min(8, max(1, max_depth - 5)); depth < min(hw2 - b.n, max_depth); ++depth){
         alpha = -sc_w - epsilon;
         beta = sc_w + epsilon;
         search_hash_table_init(1 - f_search_table_idx);
@@ -1584,14 +1595,13 @@ inline search_result final_search(const board b, long long strt){
     }
     if (canput >= 2)
         sort(nb.begin(), nb.end());
-    g = -nega_scout_final(&nb[0], strt, false, max_depth, -beta, -alpha);
-    alpha = max(alpha, g);
+    alpha = -nega_scout_final(&nb[0], strt, false, max_depth, -beta, -alpha);
     tmp_policy = nb[0].policy;
     for (i = 1; i < canput; ++i){
         g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - step, -alpha);
         if (alpha < g){
             g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -g);
-            if (alpha < g){
+            if (alpha <= g){
                 alpha = g;
                 tmp_policy = nb[i].policy;
             }
@@ -1661,10 +1671,10 @@ inline void print_result(search_result result){
 }
 
 int main(){
-    int policy, n_stones, ai_player, depth, final_depth;
+    int n_stones, ai_player, depth, final_depth;
     board b;
     cin >> ai_player;
-    depth = 15;
+    depth = 16;
     final_depth = 18;
     long long strt = tim();
     search_result result;
@@ -1677,7 +1687,6 @@ int main(){
     init_included();
     init_pop_digit();
     init_mpc();
-    //init_book();
     cerr << "book initialized in " << tim() - strt << " ms" << endl;
     init_evaluation();
     f_search_table_idx = 0;

@@ -68,7 +68,7 @@ def draw_data(record, player):
             else:
                 record_all[raw_record][0] += 1
 '''
-rec = 'd3c5f6f5e6e3d6f7g6e7f4c4c6c3d8e8d7c8b5b6b4a4c7a5g8b8f2f3e2d2b3d1c1g4'
+rec = ''
 rec_num = ''
 for i in range(0, len(rec), 2):
     x = ord(rec[i]) - ord('a')
@@ -109,31 +109,84 @@ print(len(record_all))
 inf = 1000000000
 with open('third_party/records4.txt', 'r') as f:
     records = f.read().splitlines()
-record = records[0]
-record_proc = ''
-for i in range(0, len(record), 2):
-    x = ord(record[i]) - ord('a')
-    y = int(record[i + 1]) - 1
-    record_proc += all_chars[y * 8 + x]
-    if not record_proc in record_all:
-        record_all[record_proc] = [1000, inf * 1000]
-    else:
-        record_all[record_proc][0] += 1000
-        record_all[record_proc][1] += inf * 1000
-for record in records[1:]:
+for record in records:
     record_proc = ''
     for i in range(0, len(record), 2):
         x = ord(record[i]) - ord('a')
         y = int(record[i + 1]) - 1
         record_proc += all_chars[y * 8 + x]
         if not record_proc in record_all:
-            record_all[record_proc] = [100, 100]
+            record_all[record_proc] = [100, inf]
         else:
             record_all[record_proc][0] += 100
-            record_all[record_proc][1] += 100
+            record_all[record_proc][1] += inf
 print(len(record_all))
 print(black_win, white_win)
 
+hand_book = set()
+with open('third_party/records5.txt', 'r') as f:
+    dat_handbook = f.read().splitlines()
+for elem in dat_handbook:
+    hand_book.add(elem)
+
+with open('third_party/records6.txt', 'r') as f:
+    records6 = f.read().splitlines()
+print(len(records6))
+for record in records6:
+    record_proc = ''
+    for i in range(0, len(record), 2):
+        x = ord(record[i]) - ord('a')
+        y = int(record[i + 1]) - 1
+        record_proc += all_chars[y * 8 + x]
+        if i % 4 == 0:
+            if not record_proc in record_all:
+                record_all[record_proc] = [1000, inf * 1000]
+            else:
+                record_all[record_proc][0] += 1000
+                record_all[record_proc][1] += inf * 1000
+        else:
+            if not record_proc in record_all:
+                record_all[record_proc] = [1, 0]
+            else:
+                record_all[record_proc][0] += 1
+                record_all[record_proc][1] += 0
+
+with open('third_party/records7.txt', 'r') as f:
+    records7 = f.read().splitlines()
+print(len(records7))
+for record in records7:
+    record_proc = ''
+    for i in range(0, len(record), 2):
+        x = ord(record[i]) - ord('a')
+        y = int(record[i + 1]) - 1
+        record_proc += all_chars[y * 8 + x]
+        if i % 4 == 2:
+            if not record_proc in record_all:
+                record_all[record_proc] = [1000, inf * 1000]
+            else:
+                record_all[record_proc][0] += 1000
+                record_all[record_proc][1] += inf * 1000
+        else:
+            if not record_proc in record_all:
+                record_all[record_proc] = [1, 0]
+            else:
+                record_all[record_proc][0] += 1
+                record_all[record_proc][1] += 0
+
+with open('third_party/records8.txt', 'r') as f:
+    records8 = f.read().splitlines()
+print(len(records8))
+for record in records8:
+    record_proc = ''
+    for i in range(0, len(record), 2):
+        x = ord(record[i]) - ord('a')
+        y = int(record[i + 1]) - 1
+        record_proc += all_chars[y * 8 + x]
+        if not record_proc in record_all:
+            record_all[record_proc] = [1000, inf * 1000]
+        else:
+            record_all[record_proc][0] += 1000
+            record_all[record_proc][1] += inf * 1000
 
 book = {}
 
@@ -144,81 +197,15 @@ num_threshold1 = 3
 inf = 100000000
 
 def calc_value(r):
-    if translate(r) == 'f5f6e6f4e3c5c4d6b5d3c3e2f2c2f1b4c1a6g5':
-        print('a')
+    if translate(r) in hand_book:
         return inf
-    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7f7c5b6g6e3e2f1d2e1c1':
-        print('b')
-        return inf
-    if translate(r) == 'f5f6e6f4e3c5c4d3f3e2g4':
-        print('c')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2b4e3':
-        print('d')
-        return inf
-    '''
-    if translate(r) == 'f5d6c4d3c3f4f6f3e6e7f7c5b6g6e3e2f1d2e1c1':
-        print('e')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g4c4g5c3f7d2e7f2c8f3c7d8e2b8':
-        print('f')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g4c4g5c3f7d2e7f2c8f3c7d8e8g3e2h4f1e1h5h6':
-        print('g')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g4c4g5c3f7d2e7f2c8f3e2e8':
-        print('h')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g4c4g5c3f7d2e7f2c8f3c7d8e8g3e2h4f1e1h5h6c1d1h3g6':
-        print('i')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b5a4a2a3a5c3':
-        print('j')
-        return inf
-    '''
-    if translate(r) == 'f5d6c3f4f6d3f3b3c7':
-        print('k')
-        return inf
-    '''
-    if translate(r) == 'f5f6e6f4e3c5c4e7c6e2f3f2g5g4h4':
-        print('l')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2e3d2c6b4a4b5b6d7e7a3e2c7c1g4d1f7e6f6g3a5a7f3':
-        print('m')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7c6g6f8f7g5h6h4g4':
-        print('n')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7f7c5b6g6e3e2f1d2e1c1c2b5a6b4a5a3g3e8':
-        print('o')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2e3d2c6b4b5f2e6f3c1a3a4a5g6f6':
-        print('p')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2b4c6d2e6b5e3f3a5a6':
-        print('q')
-        return inf
-    '''
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2b4e3e6c6g4f6b6g6e7b5g5f3f7a6a5d7':
-        print('r')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4c5b3c2f6a3b5b6e3f2e2b4a4a5':
-        print('s')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7c6g6h6c5b6d7':
-        print('t')
-        return inf
-    if translate(r) == 'f5d6c5f4e3c6d3f6e6d7g3c4b4b3b6c3b5a6g6g5':
-        print('u')
-        return inf
-    if translate(r) == 'f5d6c3d3c4f4f6f3e6e7d7g6f8f7g5h6h4g4h3h5h7c5b4e8d8b5e3d2':
-        print('v')
-        return inf
-    if record_all[r][0] < num_threshold1 and record_all[r][1] < inf:
-        return -inf
-    val = record_all[r][1] / record_all[r][0]
-    val += 0.01 * record_all[r][0]
-    return val
+    if r in record_all:
+        if record_all[r][0] < num_threshold1:
+            return -inf
+        val = record_all[r][1] / record_all[r][0]
+        val += 0.01 * record_all[r][0]
+        return val
+    return -inf
 
 def create_book(record):
     if len(record) > max_ln:
@@ -227,11 +214,10 @@ def create_book(record):
     max_val = -inf
     for i in range(hw2):
         r = record + all_chars[i]
-        if r in record_all:
-            val = calc_value(r)
-            if max_val < val:
-                max_val = val
-                policy = i
+        val = calc_value(r)
+        if max_val < val:
+            max_val = val
+            policy = i
     if policy != -1:
         book[record] = all_chars[policy]
         for i in range(hw2):

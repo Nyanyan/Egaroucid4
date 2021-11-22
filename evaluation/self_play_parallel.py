@@ -1,7 +1,7 @@
 from math import tan, atan
 import subprocess
 
-play_num = 34560
+play_num = 2880
 parallel_num = 6
 parallel_exe_num = play_num // parallel_num
 

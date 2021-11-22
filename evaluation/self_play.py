@@ -167,12 +167,20 @@ def record_translate(record):
         res.append([y, x])
     return res
 
-tactic = []
-for year in range(2000, 2019 + 1):
-    with open('third_party/records/2019.csv', 'r', encoding='utf-8-sig') as f:
-        tactic.extend(record_translate(elem) for elem in f.read().splitlines())
-ln_tactic = len(tactic)
-print(ln_tactic)
+def record_rev_translate(y, x):
+    x_str = chr(ord('a') + x)
+    y_str = str(y + 1)
+    return x_str + y_str
+
+with open('third_party/extract_prominence.txt', 'r') as f:
+    data = [elem.split() for elem in f.read().splitlines()]
+tactic = {}
+for r, p in data:
+    if r in tactic:
+        tactic[r].append(p)
+    else:
+        tactic[r] = [p]
+print(len(tactic))
 
 ais = []
 evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -190,13 +198,33 @@ def self_play():
     start_num = int(input())
     for num in trange(play_num):
         #print('=', end='', file=sys.stderr, flush=True)
-        rv = reversi()
-        tactic_idx = randrange(0, ln_tactic)
-        for y, x in tactic[tactic_idx][:min(len(tactic[tactic_idx]), 25)]:
-            rv.check_pass()
-            rv.check_pass()
-            rv.move(y, x)
+        record = ''
         data = []
+        rv = reversi()
+        y = 4
+        x = 5
+        rv.move(y, x)
+        record += record_rev_translate(y, x)
+        while True:
+            if rv.check_pass() and rv.check_pass():
+                break
+            if not record in tactic:
+                break
+            tactic_idx = randrange(len(tactic[record]))
+            y = int(tactic[record][tactic_idx][1]) - 1
+            x = ord(tactic[record][tactic_idx][0]) - ord('a')
+            grid_str = ''
+            for yy in range(hw):
+                for xx in range(hw):
+                    grid_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
+                grid_str += '\n'
+            evaluate.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
+            evaluate.stdin.flush()
+            add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
+            data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
+            rv.move(y, x)
+            record += record_rev_translate(y, x)
+        break_flag = False
         while True:
             if rv.check_pass() and rv.check_pass():
                 break
@@ -231,15 +259,20 @@ def self_play():
                 init_ai()
                 break
             rv.move(y, x)
-        result = rv.nums[0] - rv.nums[1]
-        vacant = hw2 - rv.nums[0] - rv.nums[1]
-        if result > 0:
-            result += vacant
-        elif result < 0:
-            result -= vacant
-        with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
-            for datum in data:
-                f.write(datum + ' ' + str(result) + '\n')
+            record += record_rev_translate(y, x)
+        if not break_flag:
+            result = rv.nums[0] - rv.nums[1]
+            vacant = hw2 - rv.nums[0] - rv.nums[1]
+            if result > 0:
+                result += vacant
+            elif result < 0:
+                result -= vacant
+            with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
+                for datum in data:
+                    f.write(datum + ' ' + str(result) + '\n')
+            with open('self_play/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
+                f.write(record + '\n')
+
 
 self_play()
 for j in range(2):

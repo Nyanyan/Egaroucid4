@@ -9,7 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.constraints import max_norm
-from keras.layers.noise import GaussianNoise
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
@@ -250,7 +250,8 @@ for stone_strt in [30, 40, 50]:
     print(model.evaluate(test_data, test_labels))
     early_stop = EarlyStopping(monitor='val_loss', patience=5)
     model_checkpoint = ModelCheckpoint(filepath=os.path.join('learned_data/' + str(stone_strt) + '_' + str(stone_end), 'model_{epoch:02d}_{val_loss:.5f}_{val_mae:.5f}.h5'), monitor='val_loss', verbose=1)
-    history = model.fit(train_data, train_labels, epochs=n_epochs, validation_data=(test_data, test_labels), callbacks=[early_stop, model_checkpoint])
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0.0001)
+    history = model.fit(train_data, train_labels, epochs=n_epochs, validation_data=(test_data, test_labels), callbacks=[early_stop, model_checkpoint, reduce_lr])
 
     now = datetime.datetime.today()
     print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
