@@ -159,7 +159,7 @@ double all_bias[n_phases];
 mt19937 raw_myrandom(time(0));
 
 inline double myrandom(){
-    return (double)raw_myrandom() / random_device::max();
+    return (double)raw_myrandom() / mt19937::max();
 }
 
 inline int myrandrange(int s, int e){
