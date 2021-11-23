@@ -146,10 +146,7 @@ for record in records6:
                 record_all[record_proc][1] += inf * 1000
         else:
             if not record_proc in record_all:
-                record_all[record_proc] = [1, 0]
-            else:
-                record_all[record_proc][0] += 1
-                record_all[record_proc][1] += 0
+                record_all[record_proc] = [0, 0]
 
 with open('third_party/records7.txt', 'r') as f:
     records7 = f.read().splitlines()
@@ -168,10 +165,7 @@ for record in records7:
                 record_all[record_proc][1] += inf * 1000
         else:
             if not record_proc in record_all:
-                record_all[record_proc] = [1, 0]
-            else:
-                record_all[record_proc][0] += 1
-                record_all[record_proc][1] += 0
+                record_all[record_proc] = [0, 0]
 
 with open('third_party/records8.txt', 'r') as f:
     records8 = f.read().splitlines()
@@ -192,7 +186,7 @@ book = {}
 
 max_ln = 45
 
-num_threshold1 = 3
+num_threshold1 = 4
 
 inf = 100000000
 
@@ -226,7 +220,6 @@ def create_book(record):
                 create_book(r)
 
 
-
 book = {}
 create_book(all_chars[37])
 print(len(book))
@@ -238,3 +231,35 @@ if (input('sure?: ') == 'yes'):
     with open('learned_data/book.txt', 'w') as f:
         for record in book.keys():
             f.write(record[1:] + ' ' + book[record])
+
+
+val_threshold = -0.05
+
+def create_book_change(record):
+    if len(record) > max_ln:
+        return
+    for i in range(hw2):
+        r = record + all_chars[i]
+        val = calc_value(r)
+        if val >= val_threshold:
+            if record in book:
+                book[record].append(all_chars[i])
+            else:
+                book[record] = [all_chars[i]]
+            for i in range(hw2):
+                rr = r + all_chars[i]
+                if rr in record_all:
+                    create_book(rr)
+
+book = {}
+create_book_change(all_chars[37])
+print(len(book))
+create_book_change(all_chars[37] + all_chars[43])
+create_book_change(all_chars[37] + all_chars[45])
+create_book_change(all_chars[37] + all_chars[29])
+print(len(book))
+if (input('sure?: ') == 'yes'):
+    with open('learned_data/book_change.txt', 'w') as f:
+        for record in book.keys():
+            for elem in book[record]:
+                f.write(record[1:] + ' ' + elem)

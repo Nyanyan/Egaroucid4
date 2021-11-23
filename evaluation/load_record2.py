@@ -1,7 +1,6 @@
-from random import randrange
-import subprocess
-import sys
 from tqdm import trange
+import subprocess
+import glob
 
 hw = 8
 hw2 = 64
@@ -158,127 +157,70 @@ class reversi:
             #print('Draw!', self.nums[0], '-', self.nums[1])
             return -1
 
-
-def record_translate(record):
-    res = []
-    for i in range(0, len(record), 2):
-        x = ord(record[i]) - ord('a')
-        y = int(record[i + 1]) - 1
-        res.append([y, x])
-    return res
-
-def record_rev_translate(y, x):
-    x_str = chr(ord('a') + x)
-    y_str = str(y + 1)
-    return x_str + y_str
-
-with open('third_party/extract_prominence.txt', 'r') as f:
-    data = [elem.split() for elem in f.read().splitlines()]
-tactic = {}
-for r, p in data:
-    if r in tactic:
-        tactic[r].append(p)
-    else:
-        tactic[r] = [p]
-print(len(tactic))
-
-ais = []
 evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
-def init_ai():
-    global ais
-    ais = [subprocess.Popen('./ai2.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) for _ in range(2)]
-    ais[0].stdin.write('0\n'.encode('utf-8'))
-    ais[1].stdin.write('1\n'.encode('utf-8'))
+def change_f5(y, x):
+    return y, x
 
-init_ai()
+def change_d3(y, x):
+    return 7 - x, 7 - y
 
-def self_play():
-    play_num = int(input())
-    start_num = int(input())
-    for num in trange(play_num):
-        #print('=', end='', file=sys.stderr, flush=True)
-        record = ''
-        data = []
-        rv = reversi()
-        y = 4
-        x = 5
-        rv.move(y, x)
-        record += record_rev_translate(y, x)
-        while True:
-            if rv.check_pass() and rv.check_pass():
-                break
-            if not record in tactic:
-                break
-            tactic_idx = randrange(len(tactic[record]))
-            y = int(tactic[record][tactic_idx][1]) - 1
-            x = ord(tactic[record][tactic_idx][0]) - ord('a')
-            grid_str = ''
-            for yy in range(hw):
-                for xx in range(hw):
-                    grid_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
-                grid_str += '\n'
-            evaluate.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
-            evaluate.stdin.flush()
-            add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
-            data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
-            rv.move(y, x)
-            record += record_rev_translate(y, x)
-        break_flag = False
-        while True:
-            if rv.check_pass() and rv.check_pass():
-                break
-            try:
-                grid_str = ''
-                for yy in range(hw):
-                    for xx in range(hw):
-                        grid_str += '0' if rv.grid[yy][xx] == 0 else '1' if rv.grid[yy][xx] == 1 else '.'
-                    grid_str += '\n'
-                #print(grid_str)
-                ais[rv.player].stdin.write(grid_str.encode('utf-8'))
-                ais[rv.player].stdin.flush()
-                y, x, score = ais[rv.player].stdout.readline().split()
-                evaluate.stdin.write((str(rv.player) + '\n' + grid_str).encode('utf-8'))
-                evaluate.stdin.flush()
-                add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
-                y = int(y)
-                x = int(x)
-                score = float(score)
-                if rv.player == 1:
-                    score = -score
-                #data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data + ' ' + str(score))
-                data.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
-            except:
-                print('err')
-                break_flag = True
-                for j in range(2):
-                    try:
-                        ais[j].kill()
-                    except:
-                        continue
-                init_ai()
-                break
-            rv.move(y, x)
-            record += record_rev_translate(y, x)
-        if not break_flag:
-            result = rv.nums[0] - rv.nums[1]
-            vacant = hw2 - rv.nums[0] - rv.nums[1]
-            if result > 0:
-                result += vacant
-            elif result < 0:
-                result -= vacant
-            '''
-            with open('data/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
-                for datum in data:
-                    f.write(datum + ' ' + str(result) + '\n')
-            '''
-            with open('self_play/' + digit(start_num + num // 1000, 7) + '.txt', 'a') as f:
-                f.write(record + '\n')
+def change_c4(y, x):
+    return 7 - y, 7 - x
 
+def change_e6(y, x):
+    return x, y
 
-self_play()
-for j in range(2):
-    try:
-        ais[j].kill()
-    except:
-        continue
+def collect_data(num, s):
+    grids = []
+    rv = reversi()
+    idx = 0
+    turn = 0
+    first_f = s[0] + s[1]
+    while True:
+        if idx >= len(s):
+            return 0
+        if rv.check_pass() and rv.check_pass():
+            break
+        x = ord(s[idx]) - ord('A')
+        y = int(s[idx + 1]) - 1
+        if first_f == 'D3':
+            y, x = change_d3(y, x)
+        elif first_f == 'C4':
+            y, x = change_c4(y, x)
+        elif first_f == 'E6':
+            y, x = change_e6(y, x)
+        idx += 2
+        grid_str = ''
+        for i in range(hw):
+            for j in range(hw):
+                grid_str += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
+            grid_str += '\n'
+        evaluate.stdin.write((str(rv.player) + '\n' + grid_str + '\n').encode('utf-8'))
+        evaluate.stdin.flush()
+        add_data = evaluate.stdout.readline().decode().replace('\r\n', '')
+        grids.append(grid_str.replace('\n', '') + ' ' + str(rv.player) + ' ' + add_data)
+        if rv.move(y, x):
+            print('error')
+            exit()
+        turn += 1
+        if rv.end():
+            break
+    rv.check_pass()
+    #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
+    result = rv.nums[0] - rv.nums[1]
+    score = 1 if result > 0 else -1 if result < 0 else 0
+    with open('data/' + digit(num, 7) + '.txt', 'a') as f:
+        for grid in grids:
+            f.write(grid + ' ' + str(result) + '\n')
+    return 1
+
+files = glob.glob('./third_party/records2_raw/*')
+used = 0
+for file_idx in trange(len(files)):
+    file = files[file_idx]
+    with open(file, 'r') as f:
+        raw_data = f.read()
+    record = raw_data.replace(';', '').replace('-', '')
+    used += collect_data(file_idx // 1000, record)
+print(used)

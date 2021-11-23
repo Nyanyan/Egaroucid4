@@ -13,7 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <random>
-#include <thread>
+#include <time.h>
 
 using namespace std;
 
@@ -82,7 +82,8 @@ struct board{
 
 struct book_node{
     int k[4];
-    int policy;
+    int policies[35];
+    int size;
     book_node* p_n_node;
 };
 
@@ -134,16 +135,15 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
-const double mpct[6]={1.6,1.6,1.5,1.5,1.5,1.4};
-const double mpcsd[6][mpc_max_depth - mpc_min_depth + 1]={
-    {462, 469, 378, 289, 475, 367, 574, 470, 473, 374},
-    {318, 359, 324, 283, 368, 331, 426, 373, 412, 414},
-    {395, 478, 440, 388, 521, 431, 581, 485, 466, 501},
-    {414, 489, 410, 371, 565, 491, 625, 592, 534, 538},
-    {510, 611, 508, 485, 721, 597, 757, 726, 689, 653},
-    {469, 497, 424, 398, 591, 492, 663, 525, 452, 395}
-};
-const int mpcd[20] = {0, 0, 0, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 5, 6, 7};
+const double mpct[6]={1.6,1.6,1.6,1.5,1.5,1.4};
+const double mpcsd[6][mpc_max_depth-mpc_min_depth+1]={
+    {482,512,352,298,474,372,349,323,463,335},
+    {312,381,310,261,354,322,291,313,389,371},
+    {389,463,392,352,548,402,422,441,530,538},
+    {417,490,436,405,570,494,452,438,527,524},
+    {486,554,519,463,635,665,555,550,635,581},
+    {433,517,430,391,560,556,383,345,567,332}};
+const int mpcd[20]={0,0,0,1,2,1,2,3,4,3,4,3,4,5,6,5,6,5,6,7};
 int mpctsd[6][mpc_max_depth + 1];
 
 vector<int> vacant_lst;
@@ -155,6 +155,16 @@ double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
 double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
+
+mt19937 raw_myrandom(time(0));
+
+inline double myrandom(){
+    return (double)raw_myrandom() / random_device::max();
+}
+
+inline int myrandrange(int s, int e){
+    return s +(int)((e - s) * myrandom());
+}
 
 inline long long tim(){
     return chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -441,7 +451,8 @@ inline book_node* book_node_init(const int *key, int policy){
     p_node = (book_node*)malloc(sizeof(book_node));
     for (int i = 0; i < 4; ++i)
         p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
-    p_node->policy = policy;
+    p_node->policies[0] = policy;
+    p_node->size = 1;
     p_node->p_n_node = NULL;
     return p_node;
 }
@@ -455,7 +466,7 @@ inline void register_book(book_node** hash_table, const int *key, int hash, int 
         p_pre_node = p_node;
         while(p_node != NULL){
             if(compare_key(key, p_node->k)){
-                p_node->policy = policy;
+                p_node->policies[p_node->size++] = policy;
                 return;
             }
             p_pre_node = p_node;
@@ -469,7 +480,7 @@ inline int get_book(const int *key){
     book_node *p_node = book[calc_hash(key) & book_hash_mask];
     while(p_node != NULL){
         if(compare_key(key, p_node->k)){
-            return p_node->policy;
+            return p_node->policies[myrandrange(0, p_node->size)];
         }
         p_node = p_node->p_n_node;
     }
@@ -483,7 +494,7 @@ inline void init_book(){
     string param_compressed1;
     for (i = 0; i < hw2; ++i)
         char_keys[book_chars[i]] = i;
-    ifstream ifs("book/param/book.txt");
+    ifstream ifs("book/param/book_change.txt");
     if (ifs.fail()){
         cerr << "book file not exist" << endl;
         exit(1);
@@ -1669,8 +1680,10 @@ inline void print_result(search_result result){
 }
 
 int main(){
+    cerr << myrandom() << endl;
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
+    const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
     final_depth = 20;
@@ -1701,7 +1714,7 @@ int main(){
         b.p = ai_player;
         cerr << "value: " << evaluate(&b) << endl;
         if (n_stones == 4){
-            policy = 37;
+            policy = first_moves[myrandrange(0, 4)];
             print_result(policy, 0);
             continue;
         }

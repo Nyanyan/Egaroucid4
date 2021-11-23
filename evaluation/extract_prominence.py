@@ -80,7 +80,21 @@ def push_data(record, player, score):
                 record_all[raw_record][0] += 1
                 record_all[raw_record][1] += score
 
-for i in trange(127):
+for i in trange(183):
+    try:
+        with open('third_party/book_data/' + digit(i, 7) + '.txt', 'r') as f:
+            records = f.read().splitlines()
+        for datum in records:
+            record, score = datum.split()
+            score = int(score)
+            push_data(record, 0, score)
+            push_data(record, 1, -score)
+    except:
+        print('cannot open', i)
+        continue
+print(len(record_all))
+
+for i in trange(56):
     try:
         with open('third_party/book_data/' + digit(i, 7) + '.txt', 'r') as f:
             records = f.read().splitlines()
@@ -127,7 +141,7 @@ book = {}
 max_ln = 45
 
 num_threshold1 = 10
-val_threshold = 2.0
+val_threshold = 5.0
 
 inf = 100000000
 
