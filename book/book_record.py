@@ -233,7 +233,7 @@ if (input('sure?: ') == 'yes'):
             f.write(record[1:] + ' ' + book[record])
 
 
-val_threshold = -0.03125
+val_threshold = -0.05
 
 def create_book_change(record):
     if len(record) > max_ln:
