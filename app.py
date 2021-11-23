@@ -46,7 +46,7 @@ def call_ai():
             stdin += '0' if grid[y][x] == 0 else '1' if grid[y][x] == 1 else '.'
         stdin += '\n'
     #print('stdin')
-    #print(stdin)
+    print(stdin)
     strt = time()
     ai.stdin.write(stdin.encode('utf-8'))
     ai.stdin.flush()

@@ -82,7 +82,7 @@ exit()
 black_win = 0
 white_win = 0
 
-for i in trange(183):
+for i in trange(127):
     try:
         with open('data/' + digit(i, 7) + '.txt', 'r') as f:
             records = f.read().splitlines()
@@ -220,7 +220,6 @@ def create_book(record):
                 create_book(r)
 
 
-
 book = {}
 create_book(all_chars[37])
 print(len(book))
@@ -232,3 +231,35 @@ if (input('sure?: ') == 'yes'):
     with open('learned_data/book.txt', 'w') as f:
         for record in book.keys():
             f.write(record[1:] + ' ' + book[record])
+
+
+val_threshold = -0.03125
+
+def create_book_change(record):
+    if len(record) > max_ln:
+        return
+    for i in range(hw2):
+        r = record + all_chars[i]
+        val = calc_value(r)
+        if val >= val_threshold:
+            if record in book:
+                book[record].append(all_chars[i])
+            else:
+                book[record] = [all_chars[i]]
+            for i in range(hw2):
+                rr = r + all_chars[i]
+                if rr in record_all:
+                    create_book(rr)
+
+book = {}
+create_book_change(all_chars[37])
+print(len(book))
+create_book_change(all_chars[37] + all_chars[43])
+create_book_change(all_chars[37] + all_chars[45])
+create_book_change(all_chars[37] + all_chars[29])
+print(len(book))
+if (input('sure?: ') == 'yes'):
+    with open('learned_data/book_change.txt', 'w') as f:
+        for record in book.keys():
+            for elem in book[record]:
+                f.write(record[1:] + ' ' + elem)

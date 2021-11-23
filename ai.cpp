@@ -13,7 +13,6 @@
 #include <string>
 #include <unordered_map>
 #include <random>
-#include <thread>
 
 using namespace std;
 
@@ -82,7 +81,7 @@ struct board{
 
 struct book_node{
     int k[4];
-    int policy;
+    vector<int> policies;
     book_node* p_n_node;
 };
 
@@ -154,6 +153,12 @@ double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
 double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
+
+random_device random;
+
+inline int randrange(int s, int e){
+    return s +(int)((e - s) * random());
+}
 
 inline long long tim(){
     return chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -440,7 +445,7 @@ inline book_node* book_node_init(const int *key, int policy){
     p_node = (book_node*)malloc(sizeof(book_node));
     for (int i = 0; i < 4; ++i)
         p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
-    p_node->policy = policy;
+    p_node->policies.push_back(policy);
     p_node->p_n_node = NULL;
     return p_node;
 }
@@ -454,7 +459,7 @@ inline void register_book(book_node** hash_table, const int *key, int hash, int 
         p_pre_node = p_node;
         while(p_node != NULL){
             if(compare_key(key, p_node->k)){
-                p_node->policy = policy;
+                p_node->policies.push_back(policy);
                 return;
             }
             p_pre_node = p_node;
@@ -468,7 +473,7 @@ inline int get_book(const int *key){
     book_node *p_node = book[calc_hash(key) & book_hash_mask];
     while(p_node != NULL){
         if(compare_key(key, p_node->k)){
-            return p_node->policy;
+            return p_node->policies[randrange(0, (int)(p_node->policies.size()))];
         }
         p_node = p_node->p_n_node;
     }
@@ -482,7 +487,7 @@ inline void init_book(){
     string param_compressed1;
     for (i = 0; i < hw2; ++i)
         char_keys[book_chars[i]] = i;
-    ifstream ifs("book/param/book.txt");
+    ifstream ifs("book/param/book_change.txt");
     if (ifs.fail()){
         cerr << "book file not exist" << endl;
         exit(1);
@@ -498,20 +503,27 @@ inline void init_book(){
     int y, x;
     int tmp[16];
     while (data_idx < ln){
+        cerr << "d";
         fb.p = 1;
         for (i = 0; i < b_idx_num; ++i)
             fb.b[i] = first_board[i];
         while (true){
+            cerr << data_idx << " ";
+            cerr << param_compressed1[data_idx] << " ";
+            cerr << char_keys.count(param_compressed1[data_idx]) << endl;
+            //cerr << char_keys[param_compressed1[data_idx]] << endl;
             if (param_compressed1[data_idx] == ' '){
                 ++data_idx;
                 break;
             }
             coord = char_keys[param_compressed1[data_idx++]];
+            cerr << coord << endl;
             fb = move(&fb, coord);
         }
         coord = char_keys[param_compressed1[data_idx++]];
         y = coord / hw;
         x = coord % hw;
+        cerr << "e";
         register_book(book, fb.b, calc_hash(fb.b) & book_hash_mask, y * hw + x);
         for (i = 0; i < 8; ++i)
             swap(fb.b[i], fb.b[8 + i]);
@@ -1670,6 +1682,7 @@ inline void print_result(search_result result){
 int main(){
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
+    const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
     final_depth = 20;
@@ -1700,7 +1713,7 @@ int main(){
         b.p = ai_player;
         cerr << "value: " << evaluate(&b) << endl;
         if (n_stones == 4){
-            policy = 37;
+            policy = first_moves[randrange(0, 4)];
             print_result(policy, 0);
             continue;
         }

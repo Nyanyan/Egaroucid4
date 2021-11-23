@@ -159,11 +159,24 @@ class reversi:
 
 evaluate = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
+def change_f5(y, x):
+    return y, x
+
+def change_d3(y, x):
+    return 7 - x, 7 - y
+
+def change_c4(y, x):
+    return 7 - y, 7 - x
+
+def change_e6(y, x):
+    return x, y
+
 def collect_data(num, s):
     grids = []
     rv = reversi()
     idx = 0
     turn = 0
+    first_f = s[0] + s[1]
     while True:
         if idx >= len(s):
             return 0
@@ -171,6 +184,12 @@ def collect_data(num, s):
             break
         x = ord(s[idx]) - ord('A')
         y = int(s[idx + 1]) - 1
+        if first_f == 'D3':
+            y, x = change_d3(y, x)
+        elif first_f == 'C4':
+            y, x = change_c4(y, x)
+        elif first_f == 'E6':
+            y, x = change_e6(y, x)
         idx += 2
         grid_str = ''
         for i in range(hw):
