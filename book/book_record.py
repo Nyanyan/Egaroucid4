@@ -82,7 +82,7 @@ exit()
 black_win = 0
 white_win = 0
 
-for i in trange(127):
+for i in trange(183):
     try:
         with open('data/' + digit(i, 7) + '.txt', 'r') as f:
             records = f.read().splitlines()
@@ -146,10 +146,7 @@ for record in records6:
                 record_all[record_proc][1] += inf * 1000
         else:
             if not record_proc in record_all:
-                record_all[record_proc] = [1, 0]
-            else:
-                record_all[record_proc][0] += 1
-                record_all[record_proc][1] += 0
+                record_all[record_proc] = [0, 0]
 
 with open('third_party/records7.txt', 'r') as f:
     records7 = f.read().splitlines()
@@ -168,10 +165,7 @@ for record in records7:
                 record_all[record_proc][1] += inf * 1000
         else:
             if not record_proc in record_all:
-                record_all[record_proc] = [1, 0]
-            else:
-                record_all[record_proc][0] += 1
-                record_all[record_proc][1] += 0
+                record_all[record_proc] = [0, 0]
 
 with open('third_party/records8.txt', 'r') as f:
     records8 = f.read().splitlines()
@@ -192,7 +186,7 @@ book = {}
 
 max_ln = 45
 
-num_threshold1 = 3
+num_threshold1 = 4
 
 inf = 100000000
 

@@ -8,6 +8,7 @@ evaluation/final_read.out
 evaluation/ai2.out
 evaluation/legacy
 evaluation/__pycache__
+evaluation/book
 book/third_party
 book/learned_data
 book/data
