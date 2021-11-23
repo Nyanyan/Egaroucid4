@@ -60,4 +60,4 @@ def call_ai():
 
 if __name__ == '__main__':
     print('start python', flush=True)
-    app.run(threaded=True)
+    app.run(host ='0.0.0.0', port = 5000, threaded=True)

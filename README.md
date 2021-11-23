@@ -66,3 +66,7 @@ $ python3 app.py
 ```
 
 Then visit http://127.0.0.1:5000/ on your browser to play!
+
+## Docker
+
+See [README](./docker-run.md).
