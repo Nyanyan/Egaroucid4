@@ -494,7 +494,7 @@ inline void init_book(){
     string param_compressed1;
     for (i = 0; i < hw2; ++i)
         char_keys[book_chars[i]] = i;
-    ifstream ifs("book/param/book_change.txt");
+    ifstream ifs("book/param/book.txt");
     if (ifs.fail()){
         cerr << "book file not exist" << endl;
         exit(1);
@@ -1133,8 +1133,8 @@ int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped
             legal |= legal_arr[b->p][b->b[place_included[cell][3]]][local_place[place_included[cell][3]][cell]];
         if (legal){
             nb.push_back(move(b, cell));
-            nb[canput].v = -calc_canput_exact(&nb[canput]);
-            //move_ordering(&(nb[canput]));
+            move_ordering(&(nb[canput]));
+            nb[canput].v -= 100 * calc_canput_exact(&(nb[canput]));
             ++canput;
         }
     }
@@ -1199,6 +1199,7 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
         if (legal){
             nb.push_back(move(b, cell));
             move_ordering(&(nb[canput]));
+            nb[canput].v -= 100 * calc_canput_exact(&(nb[canput]));
             ++canput;
         }
     }
@@ -1686,7 +1687,7 @@ int main(){
     const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
-    final_depth = 20;
+    final_depth = 30;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;

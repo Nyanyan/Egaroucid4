@@ -13,7 +13,9 @@
 #include <string>
 #include <unordered_map>
 #include <random>
+#include <time.h>
 #include <thread>
+#include <future>
 
 using namespace std;
 
@@ -82,7 +84,8 @@ struct board{
 
 struct book_node{
     int k[4];
-    int policy;
+    int policies[35];
+    int size;
     book_node* p_n_node;
 };
 
@@ -154,6 +157,16 @@ double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
 double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
+
+mt19937 raw_myrandom(time(0));
+
+inline double myrandom(){
+    return (double)raw_myrandom() / mt19937::max();
+}
+
+inline int myrandrange(int s, int e){
+    return s +(int)((e - s) * myrandom());
+}
 
 inline long long tim(){
     return chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -440,7 +453,8 @@ inline book_node* book_node_init(const int *key, int policy){
     p_node = (book_node*)malloc(sizeof(book_node));
     for (int i = 0; i < 4; ++i)
         p_node->k[i] = key[i * 2] + key[i * 2 + 1] * n_line;
-    p_node->policy = policy;
+    p_node->policies[0] = policy;
+    p_node->size = 1;
     p_node->p_n_node = NULL;
     return p_node;
 }
@@ -454,7 +468,7 @@ inline void register_book(book_node** hash_table, const int *key, int hash, int 
         p_pre_node = p_node;
         while(p_node != NULL){
             if(compare_key(key, p_node->k)){
-                p_node->policy = policy;
+                p_node->policies[p_node->size++] = policy;
                 return;
             }
             p_pre_node = p_node;
@@ -468,7 +482,7 @@ inline int get_book(const int *key){
     book_node *p_node = book[calc_hash(key) & book_hash_mask];
     while(p_node != NULL){
         if(compare_key(key, p_node->k)){
-            return p_node->policy;
+            return p_node->policies[myrandrange(0, p_node->size)];
         }
         p_node = p_node->p_n_node;
     }
@@ -482,7 +496,7 @@ inline void init_book(){
     string param_compressed1;
     for (i = 0; i < hw2; ++i)
         char_keys[book_chars[i]] = i;
-    ifstream ifs("book/book.txt");
+    ifstream ifs("book/param/book.txt");
     if (ifs.fail()){
         cerr << "book file not exist" << endl;
         exit(1);
@@ -657,7 +671,7 @@ inline void pre_evaluation_add(int phase_idx, double dense0[n_add_dense0][n_add_
 }
 
 inline void init_evaluation(){
-    ifstream ifs("param/param.txt");
+    ifstream ifs("evaluation/param/param.txt");
     if (ifs.fail()){
         cerr << "evaluation file not exist" << endl;
         exit(1);
@@ -1521,8 +1535,12 @@ inline search_result search(const board b, long long strt, int max_depth){
         register_search(1 - f_search_table_idx, nb[0].b, (int)(calc_hash(nb[0].b) & search_hash_mask), g, g);
         alpha = max(alpha, g);
         tmp_policy = nb[0].policy;
-        for (i = 1; i < canput; ++i){
-            g = -nega_alpha_ordering(&nb[i], strt, false, depth, -alpha - epsilon, -alpha);
+        vector<future<int>> result;
+        for (i = 1; i < canput; ++i)
+            result.push_back(async(nega_alpha_ordering, &nb[i], strt, false, depth, -alpha - epsilon, -alpha));
+        for (auto &r: result){
+            g = -r.get();
+            //g = -nega_alpha_ordering(&nb[i], strt, false, depth, -alpha - epsilon, -alpha);
             if (alpha < g){
                 alpha = g;
                 g = -mtd(&nb[i], strt, false, depth, -beta, -alpha);
@@ -1594,8 +1612,12 @@ inline search_result final_search(const board b, long long strt){
         sort(nb.begin(), nb.end());
     alpha = -nega_scout_final(&nb[0], strt, false, max_depth, -beta, -alpha);
     tmp_policy = nb[0].policy;
-    for (i = 1; i < canput; ++i){
-        g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - step, -alpha);
+    vector<future<int>> result;
+    for (i = 1; i < canput; ++i)
+        result.push_back(async(nega_alpha_ordering_final, &nb[i], strt, false, max_depth, -alpha - step, -alpha));
+    for (auto &r: result){
+        g = -r.get();
+        //g = -nega_alpha_ordering_final(&nb[i], strt, false, max_depth, -alpha - step, -alpha);
         if (alpha < g){
             g = -nega_scout_final(&nb[i], strt, false, max_depth, -beta, -g);
             if (alpha <= g){
@@ -1668,11 +1690,13 @@ inline void print_result(search_result result){
 }
 
 int main(){
-    int n_stones, ai_player, depth, final_depth;
+    cerr << myrandom() << endl;
+    int policy, n_stones, ai_player, depth, final_depth;
     board b;
+    const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
-    depth = 10;
-    final_depth = 16;
+    depth = 16;
+    final_depth = 20;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
@@ -1684,7 +1708,7 @@ int main(){
     init_included();
     init_pop_digit();
     init_mpc();
-    //init_book();
+    init_book();
     cerr << "book initialized in " << tim() - strt << " ms" << endl;
     init_evaluation();
     f_search_table_idx = 0;
@@ -1699,6 +1723,22 @@ int main(){
         b.n = n_stones;
         b.p = ai_player;
         cerr << "value: " << evaluate(&b) << endl;
+        if (n_stones == 4){
+            policy = first_moves[myrandrange(0, 4)];
+            print_result(policy, 0);
+            continue;
+        }
+        if (n_stones < book_stones){
+            policy = get_book(b.b);
+            cerr << "book policy " << policy << endl;
+            if (policy != -1){
+                b = move(&b, policy);
+                ++n_stones;
+                result = search(b, strt, 10);
+                print_result(policy, -result.value);
+                continue;
+            }
+        }
         if (n_stones >= hw2 - final_depth)
             result = final_search(b, strt);
         else

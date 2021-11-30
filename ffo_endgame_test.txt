@@ -15,3 +15,12 @@
 #44 final depth: 23 time: 14681 policy: 11 value: -1400 nodes: 169279887 nps: 11530541 get: 278849 reg: 1376871
 #45 final depth: 24 time: 91747 policy: 9 value: 600 nodes: 1118932395 nps: 12195714 get: 625900 reg: 6425528
 #46 final depth: 24 time: 83896 policy: 17 value: -800 nodes: 985765388 nps: 11749709 get: 758455 reg: 6865242
+
+2021/11/30
+#40 final depth: 20 time: 810 policy: 8 value: 3800 nodes: 6969777 nps: 8604662 get: 15222 reg: 93400
+#41 final depth: 22 time: 4782 policy: 31 value: 0 nodes: 45813806 nps: 9578466 get: 74456 reg: 419760
+#42 final depth: 22 time: 1908 policy: 14 value: 600 nodes: 17822060 nps: 9335809 get: 26553 reg: 218019
+#43 final depth: 23 time: 11951 policy: 50 value: -1200 nodes: 89379139 nps: 7478174 get: 319739 reg: 2009320
+#44 final depth: 23 time: 13058 policy: 11 value: -1400 nodes: 122781463 nps: 9402057 get: 379430 reg: 1432972
+#45 final depth: 24 time: 57474 policy: 9 value: 600 nodes: 547706279 nps: 9529469 get: 667578 reg: 5920986
+#46 final depth: 24 time: 35790 policy: 17 value: -800 nodes: 301280958 nps: 8418020 get: 543358 reg: 3614163
