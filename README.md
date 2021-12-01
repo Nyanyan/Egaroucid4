@@ -16,9 +16,7 @@ https://github.com/Nyanyan/Egaroucid
 
 https://github.com/Nyanyan/Egaroucid3
 
-![img0](https://github.com/Nyanyan/Egaroucid4/blob/main/img1.png)
-
-![img0](https://github.com/Nyanyan/Egaroucid4/blob/main/img2.png)
+![img0](https://github.com/Nyanyan/Egaroucid4/blob/main/img/img.png)
 
 
 
@@ -31,7 +29,8 @@ https://github.com/Nyanyan/Egaroucid3
 
 ### Additional Python libraries
 
-* Flask
+* subprocess
+* tkinter
 
 ### Additional C++ libraries
 
@@ -47,22 +46,28 @@ First, you have to clone this repository. For example,
 $ git clone git@github.com:Nyanyan/Egaroucid4.git
 ```
 
-Then move to the directory
+Then move to the ```src``` directory
 
 ```
-$ cd Egaroucid4
+$ cd Egaroucid4/src
 ```
 
-Compile ```ai.cpp```
+Compile ```egaroucid4.cpp```
 
 ```
-$ python3 compile.py ai.cpp ai.out
+$ g++ egaroucid4.cpp -O3 -march=native -fexcess-precision=fast -funroll-loops -flto -mtune=native -lpthread -Wall -o egaroucid4.out
 ```
 
-Execute ```app.py```
+Execute ```main.py```
 
 ```
-$ python3 app.py
+$ python3 main.py
 ```
 
-Then visit http://127.0.0.1:5000/ on your browser to play!
+Then choose which color AI play. 0 for black, 1 for white
+
+```
+AI moves (0: black 1: white): 
+```
+
+Press ```Start``` button to play!
