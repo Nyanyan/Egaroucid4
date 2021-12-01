@@ -22,14 +22,14 @@ from copy import deepcopy
 
 inf = 10000000.0
 
-for stone_strt in [40, 50]:
+for stone_strt in [30, 40, 50]:
     stone_end = stone_strt + 10
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 1000
+    game_num = 7000
     test_ratio = 0.1
-    n_epochs = 5
+    n_epochs = 10
 
 
     line2_idx = [[8, 9, 10, 11, 12, 13, 14, 15], [1, 9, 17, 25, 33, 41, 49, 57], [6, 14, 22, 30, 38, 46, 54, 62], [48, 49, 50, 51, 52, 53, 54, 55]] # line2
@@ -216,7 +216,10 @@ for stone_strt in [40, 50]:
     model.summary()
     plot_model(model, to_file='model.png', show_shapes=True)
 
-    model.compile(loss='mse', metrics='mae', optimizer=Adam(lr=0.0002))
+    def my_loss(y_true, y_pred):
+        return tf.keras.backend.square(y_true - y_pred) * (65.0 - y_true)
+
+    model.compile(loss=my_loss, metrics='mae', optimizer='adam')
     #model.compile(loss=my_loss, metrics='mae', optimizer='adam')
 
     for i in trange((game_num + 999) // 1000):

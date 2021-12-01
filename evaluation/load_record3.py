@@ -191,6 +191,10 @@ def collect_data(num, s):
     rv.check_pass()
     #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
     result = rv.nums[0] - rv.nums[1]
+    if result > 0:
+        result += hw2 - sum(rv.nums)
+    elif result < 0:
+        result -= hw2 - sum(rv.nums)
     score = 1 if result > 0 else -1 if result < 0 else 0
     with open('data/' + digit(num, 7) + '.txt', 'a') as f:
         for grid in grids:
