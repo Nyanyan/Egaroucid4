@@ -883,12 +883,11 @@ inline int evaluate(const board *b){
 }
 
 inline int end_game(const board *b){
-    int count = count_arr[b->b[0]] + count_arr[b->b[1]] + count_arr[b->b[2]] + count_arr[b->b[3]] + 
-                count_arr[b->b[4]] + count_arr[b->b[5]] + count_arr[b->b[6]] + count_arr[b->b[7]];
+    int count = (b->p ? -1 : 1) * 
+        (count_arr[b->b[0]] + count_arr[b->b[1]] + count_arr[b->b[2]] + count_arr[b->b[3]] + 
+        count_arr[b->b[4]] + count_arr[b->b[5]] + count_arr[b->b[6]] + count_arr[b->b[7]]);
     int vacant = hw2 - count_all_arr[b->b[0]] - count_all_arr[b->b[1]] - count_all_arr[b->b[2]] - count_all_arr[b->b[3]] - 
-                count_all_arr[b->b[4]] - count_all_arr[b->b[5]] - count_all_arr[b->b[6]] - count_all_arr[b->b[7]];
-    if (b->p)
-        count = -count;
+        count_all_arr[b->b[4]] - count_all_arr[b->b[5]] - count_all_arr[b->b[6]] - count_all_arr[b->b[7]];
     if (count > 0)
         count += vacant;
     else if (count < 0)
@@ -1158,7 +1157,7 @@ int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped
     if (u != -inf){
         beta = min(beta, u);
         if (alpha >= beta)
-            return beta;
+            return alpha;
     }
     int g, v = -inf, first_alpha = alpha;
     for (const board &nnb: nb){
@@ -1223,7 +1222,7 @@ int nega_scout_final(const board *b, const long long strt, bool skipped, int dep
     if (u != -inf){
         beta = min(beta, u);
         if (alpha >= beta)
-            return beta;
+            return alpha;
     }
     int g = alpha, v = -inf, first_alpha = alpha;
     for (const board &nnb: nb){
@@ -1324,7 +1323,7 @@ int nega_alpha_ordering(const board *b, const long long strt, bool skipped, int 
     if (u != -inf){
         beta = min(beta, u);
         if (alpha >= beta)
-            return beta;
+            return alpha;
     }
     vector<board> nb;
     int canput = 0;
@@ -1388,7 +1387,7 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
     if (u != -inf){
         beta = min(beta, u);
         if (alpha >= beta)
-            return beta;
+            return alpha;
     }
     vector<board> nb;
     int canput = 0;
@@ -1682,7 +1681,7 @@ int main(){
     const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
-    final_depth = 20;
+    final_depth = 30;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;

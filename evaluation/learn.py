@@ -22,14 +22,14 @@ from copy import deepcopy
 
 inf = 10000000.0
 
-for stone_strt in [30, 40, 50]:
+for stone_strt in [40, 30]:
     stone_end = stone_strt + 10
 
     min_n_stones = 4 + stone_strt
     max_n_stones = 4 + stone_end
-    game_num = 7000
+    game_num = 11000
     test_ratio = 0.1
-    n_epochs = 10
+    n_epochs = 5
 
 
     line2_idx = [[8, 9, 10, 11, 12, 13, 14, 15], [1, 9, 17, 25, 33, 41, 49, 57], [6, 14, 22, 30, 38, 46, 54, 62], [48, 49, 50, 51, 52, 53, 54, 55]] # line2
@@ -213,8 +213,8 @@ for stone_strt in [30, 40, 50]:
     '''
     model = load_model('learned_data/bef_' + str(stone_strt) + '_' + str(stone_end) + '.h5')
 
-    model.summary()
-    plot_model(model, to_file='model.png', show_shapes=True)
+    #model.summary()
+    #plot_model(model, to_file='model.png', show_shapes=True)
 
     def my_loss(y_true, y_pred):
         return tf.keras.backend.square(y_true - y_pred) * (65.0 - y_true)
