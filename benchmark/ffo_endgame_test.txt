@@ -42,3 +42,9 @@
 #44 final depth: 23 time: 4912 policy: 57 value: -1400 nodes: 58580634 nps: 11926024 get: 26093 reg: 204998
 #45 final depth: 24 time: 20067 policy: 9 value: 600 nodes: 254732123 nps: 12694080 get: 64218 reg: 572581
 #46 final depth: 24 time: 18154 policy: 17 value: -800 nodes: 221700459 nps: 12211537 get: 75697 reg: 688401
+#47 final depth: 25 time: 4130 policy: 14 value: 400 nodes: 47650173 nps: 11537572 get: 30036 reg: 153439
+#48 final depth: 25 time: 9965 policy: 45 value: 2800 nodes: 109604823 nps: 10997875 get: 72210 reg: 422322
+#49 final depth: 26 time: 32018 policy: 4 value: 1600 nodes: 388072583 nps: 12120071 get: 146168 reg: 1176268
+#50 final depth: 26 time: 6726 policy: 59 value: 1000 nodes: 72844087 nps: 10830224 get: 42449 reg: 196246
+#51 final depth: 27 time: 93227 policy: 12 value: 600 nodes: 1086451174 nps: 11653700 get: 362144 reg: 3372736
+#52 final depth: 27 time: 84752 policy: 4 value: -200 nodes: 967306994 nps: 11413382 get: 328555 reg: 3418911   WRONG RESULT
