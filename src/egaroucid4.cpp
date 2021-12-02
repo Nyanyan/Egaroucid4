@@ -52,6 +52,9 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 
 #define mpc_min_depth 1
 #define mpc_max_depth 10
+#define mpc_min_depth_final 15
+#define mpc_max_depth_final 25
+#define mpct_final 1.1
 
 #define p31 3
 #define p32 9
@@ -130,6 +133,7 @@ int pop_mid[n_line][hw][hw];
 int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
+const int mpcd[30]={0,0,0,1,2,1,2,3,4,3,4,3,4,5,6,5,6,5,6,7,6,7,8,9,8,9,10,11,10,11};
 const double mpct[6]={1.6,1.6,1.6,1.5,1.5,1.4};
 const double mpcsd[6][mpc_max_depth-mpc_min_depth+1]={
     {482,512,352,298,474,372,349,323,463,335},
@@ -137,9 +141,11 @@ const double mpcsd[6][mpc_max_depth-mpc_min_depth+1]={
     {389,463,392,352,548,402,422,441,530,538},
     {417,490,436,405,570,494,452,438,527,524},
     {486,554,519,463,635,665,555,550,635,581},
-    {433,517,430,391,560,556,383,345,567,332}};
-const int mpcd[20]={0,0,0,1,2,1,2,3,4,3,4,3,4,5,6,5,6,5,6,7};
+    {433,517,430,391,560,556,383,345,567,332}
+};
+const double mpcsd_final[mpc_max_depth_final - mpc_min_depth_final + 1] = {1554, 1645, 1461, 1656, 1453, 1571, 1576, 1486, 1668, 1615, 1462};
 int mpctsd[6][mpc_max_depth + 1];
+int mpctsd_final[mpc_max_depth_final + 1];
 
 vector<int> vacant_lst;
 book_node *book[book_hash_table_size];
@@ -397,6 +403,8 @@ inline void init_mpc(){
         for (j = 0; j < mpc_max_depth - mpc_min_depth + 1; ++j)
             mpctsd[i][mpc_min_depth + j] = (int)(mpct[i] * mpcsd[i][j]);
     }
+    for (i = 0; i < mpc_max_depth_final - mpc_min_depth_final + 1; ++i)
+        mpctsd_final[mpc_min_depth_final + i] = (int)(mpct_final * mpcsd_final[i]);
 }
 
 inline void flip(const board *b, board *res, int g_place){
@@ -898,14 +906,22 @@ inline int end_game(const board *b){
 int nega_alpha(const board *b, bool skipped, int depth, int alpha, int beta);
 
 inline bool mpc_higher(const board *b, bool skipped, int depth, int beta){
-    //return false;
     int bound = beta + mpctsd[(b->n - 4) / 10][depth];
     return nega_alpha(b, skipped, mpcd[depth], bound - epsilon, bound) >= bound;
 }
 
 inline bool mpc_lower(const board *b, bool skipped, int depth, int alpha){
-    //return false;
     int bound = alpha - mpctsd[(b->n - 4) / 10][depth];
+    return nega_alpha(b, skipped, mpcd[depth], bound, bound + epsilon) <= bound;
+}
+
+inline bool mpc_higher_final(const board *b, bool skipped, int depth, int beta){
+    int bound = beta + mpctsd_final[depth];
+    return nega_alpha(b, skipped, mpcd[depth], bound - epsilon, bound) >= bound;
+}
+
+inline bool mpc_lower_final(const board *b, bool skipped, int depth, int alpha){
+    int bound = alpha - mpctsd_final[depth];
     return nega_alpha(b, skipped, mpcd[depth], bound, bound + epsilon) <= bound;
 }
 
@@ -1108,10 +1124,10 @@ int nega_alpha_final(const board *b, bool skipped, int depth, int alpha, int bet
 
 int nega_alpha_ordering_final(const board *b, const long long strt, bool skipped, int depth, int alpha, int beta){
     ++searched_nodes;
-    if (mpc_min_depth <= depth && depth <= mpc_max_depth){
-        if (mpc_higher(b, skipped, depth, beta + step * 10))
+    if (mpc_min_depth_final <= depth && depth <= mpc_max_depth_final){
+        if (mpc_higher_final(b, skipped, depth, beta))
             return beta + step;
-        if (mpc_lower(b, skipped, depth, alpha - step * 10))
+        if (mpc_lower_final(b, skipped, depth, beta))
             return alpha - step;
     }
     if (depth <= 9)
@@ -1582,8 +1598,8 @@ inline search_result final_search(const board b, long long strt){
     hash_reg = 0;
     int order_l, order_u;
     int max_depth = hw2 - b.n;
-    if (max_depth - 7 > 0)
-        search(b, strt, max_depth - 7);
+    if (max_depth - 9 > 0)
+        search(b, strt, max_depth - 9);
     alpha = -sc_w;
     beta = sc_w;
     search_hash_table_init(1 - f_search_table_idx);
@@ -1681,7 +1697,7 @@ int main(){
     const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
-    final_depth = 20;
+    final_depth = 30;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
