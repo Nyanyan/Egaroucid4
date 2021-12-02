@@ -1602,6 +1602,7 @@ inline search_result final_search(const board b, long long strt){
     int max_depth = hw2 - b.n;
     if (max_depth - 9 > 0)
         search(b, strt, max_depth - 9);
+    cerr << "start final search" << endl;
     alpha = -sc_w;
     beta = sc_w;
     search_hash_table_init(1 - f_search_table_idx);

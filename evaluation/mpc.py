@@ -28,7 +28,7 @@ evaluate = subprocess.Popen('./mpc.out'.split(), stdin=subprocess.PIPE, stdout=s
 sleep(1)
 
 min_depth = 1
-max_depth = 10
+max_depth = 14
 
 vhs = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
 vds = [[[] for _ in range(max_depth - min_depth + 1)] for _ in range(6)]
@@ -64,7 +64,7 @@ def collect_data(num):
         vhs[(n_stones - 4) // 10][depth - min_depth].append(vh)
         vds[(n_stones - 4) // 10][depth - min_depth].append(vd)
 
-for i in range(10):
+for i in range(30):
     collect_data(i)
 
 start_temp = 1000.0
