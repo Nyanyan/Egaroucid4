@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <random>
 #include <time.h>
+#include <omp.h>
 
 using namespace std;
 
@@ -150,6 +151,7 @@ double pattern_arr[n_phases][n_patterns][max_evaluate_idx];
 double add_arr[n_phases][max_canput * 2 + 1][max_surround + 1][max_surround + 1][n_add_dense1];
 double all_dense[n_phases][n_all_input];
 double all_bias[n_phases];
+int n_thread;
 
 mt19937 raw_myrandom(time(0));
 
@@ -1445,6 +1447,18 @@ int nega_scout(const board *b, const long long strt, bool skipped, int depth, in
     return v;
 }
 
+vector<int> divide(int g, int l, int u, int d){
+    int st = max(1, (u - l) / d);
+    vector<int> res;
+    int tmp;
+    for (int i = 1; i <= d; ++i){
+        tmp = l + i * st;
+        if (tmp < u)
+            res.push_back(tmp);
+    }
+    return res;
+}
+
 int mtd(const board *b, const long long strt, bool skipped, int depth, int l, int u){
     int g = evaluate(b), beta;
     while (u - l > mtd_threshold){
@@ -1506,6 +1520,7 @@ inline search_result search(const board b, long long strt, int max_depth){
     hash_get = 0;
     hash_reg = 0;
     int order_l, order_u;
+    int result[35];
     for (int depth = min(5, max(1, max_depth - 5)); depth < min(hw2 - b.n, max_depth); ++depth){
         alpha = -sc_w - epsilon;
         beta = sc_w + epsilon;
@@ -1528,10 +1543,14 @@ inline search_result search(const board b, long long strt, int max_depth){
         register_search(1 - f_search_table_idx, nb[0].b, (int)(calc_hash(nb[0].b) & search_hash_mask), g, g);
         alpha = max(alpha, g);
         tmp_policy = nb[0].policy;
+        for (i = 1; i < canput; ++i)
+            result[i] = -inf;
+        #pragma omp parallel for
+        for (i = 1; i < canput; ++i)
+            result[i] = -nega_alpha_ordering(&nb[i], strt, false, depth, -alpha - epsilon, -alpha);
         for (i = 1; i < canput; ++i){
-            g = -nega_alpha_ordering(&nb[i], strt, false, depth, -alpha - epsilon, -alpha);
-            if (alpha < g){
-                alpha = g;
+            if (alpha < result[i]){
+                alpha = result[i];
                 g = -mtd(&nb[i], strt, false, depth, -beta, -alpha);
                 register_search(1 - f_search_table_idx, nb[i].b, (int)(calc_hash(nb[i].b) & search_hash_mask), g, g);
                 if (alpha < g){
@@ -1676,6 +1695,8 @@ inline void print_result(search_result result){
 
 int main(){
     cerr << myrandom() << endl;
+    n_thread = omp_get_max_threads();
+    cerr << "n_thread: " << n_thread << endl;
     int policy, n_stones, ai_player, depth, final_depth;
     board b;
     const int first_moves[4] = {19, 26, 37, 44};

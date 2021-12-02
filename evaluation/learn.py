@@ -22,7 +22,7 @@ from copy import deepcopy
 
 inf = 10000000.0
 
-for stone_strt in [40, 30]:
+for stone_strt in [50, 40, 30]:
     stone_end = stone_strt + 10
 
     min_n_stones = 4 + stone_strt
@@ -219,8 +219,7 @@ for stone_strt in [40, 30]:
     def my_loss(y_true, y_pred):
         return tf.keras.backend.square(y_true - y_pred) * (65.0 - y_true)
 
-    model.compile(loss=my_loss, metrics='mae', optimizer='adam')
-    #model.compile(loss=my_loss, metrics='mae', optimizer='adam')
+    model.compile(loss='mse', metrics='mae', optimizer='adam')
 
     for i in trange((game_num + 999) // 1000):
         collect_data(i)
