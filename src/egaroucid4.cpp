@@ -52,7 +52,7 @@ constexpr int search_hash_mask = search_hash_table_size - 1;
 
 #define mpc_min_depth 1
 #define mpc_max_depth 10
-#define mpc_min_depth_final 15
+#define mpc_min_depth_final 10
 #define mpc_max_depth_final 25
 #define mpct_final 1.1
 
@@ -143,7 +143,7 @@ const double mpcsd[6][mpc_max_depth-mpc_min_depth+1]={
     {486,554,519,463,635,665,555,550,635,581},
     {433,517,430,391,560,556,383,345,567,332}
 };
-const double mpcsd_final[mpc_max_depth_final - mpc_min_depth_final + 1] = {1554, 1645, 1461, 1656, 1453, 1571, 1576, 1486, 1668, 1615, 1462};
+const double mpcsd_final[mpc_max_depth_final - mpc_min_depth_final + 1] = {1626, 1519, 1342, 1327, 1378, 1580, 1456, 1586, 1585, 1385, 1707, 1594, 1610, 1428, 1671, 1434};
 int mpctsd[6][mpc_max_depth + 1];
 int mpctsd_final[mpc_max_depth_final + 1];
 
