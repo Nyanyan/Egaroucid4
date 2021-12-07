@@ -134,7 +134,7 @@ int reverse_board[n_line];
 int canput_arr[2][n_line];
 int surround_arr[2][n_line];
 const int mpcd[30]={0,0,0,1,2,1,2,3,4,3,4,3,4,5,6,5,6,5,6,7,6,7,8,9,8,9,10,11,10,11};
-const double mpct[6]={1.6,1.6,1.6,1.5,1.5,1.4};
+const double mpct[6]={1.5,1.5,1.5,1.5,1.5,1.5};
 const double mpcsd[6][mpc_max_depth-mpc_min_depth+1]={
     {482,512,352,298,474,372,349,323,463,335},
     {312,381,310,261,354,322,291,313,389,371},
@@ -814,7 +814,7 @@ inline int sfill1(int b){
 }
 
 inline int calc_canput(const board *b){
-    return (b->p ? -1 : 1) * 
+    return (b->p ? -1 : 1) * (
         canput_arr[b->p][b->b[0]] + canput_arr[b->p][b->b[1]] + canput_arr[b->p][b->b[2]] + canput_arr[b->p][b->b[3]] + 
         canput_arr[b->p][b->b[4]] + canput_arr[b->p][b->b[5]] + canput_arr[b->p][b->b[6]] + canput_arr[b->p][b->b[7]] + 
         canput_arr[b->p][b->b[8]] + canput_arr[b->p][b->b[9]] + canput_arr[b->p][b->b[10]] + canput_arr[b->p][b->b[11]] + 
@@ -824,7 +824,7 @@ inline int calc_canput(const board *b){
         canput_arr[b->p][b->b[18] - p33 + 1] + canput_arr[b->p][b->b[24] - p33 + 1] + canput_arr[b->p][b->b[29] - p33 + 1] + canput_arr[b->p][b->b[35] - p33 + 1] + 
         canput_arr[b->p][b->b[19] - p32 + 1] + canput_arr[b->p][b->b[23] - p32 + 1] + canput_arr[b->p][b->b[30] - p32 + 1] + canput_arr[b->p][b->b[34] - p32 + 1] + 
         canput_arr[b->p][b->b[20] - p31 + 1] + canput_arr[b->p][b->b[22] - p31 + 1] + canput_arr[b->p][b->b[31] - p31 + 1] + canput_arr[b->p][b->b[33] - p31 + 1] + 
-        canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]];
+        canput_arr[b->p][b->b[21]] + canput_arr[b->p][b->b[32]]);
 }
 
 inline int calc_surround(const board *b, int p){
@@ -1700,7 +1700,7 @@ int main(){
     const int first_moves[4] = {19, 26, 37, 44};
     cin >> ai_player;
     depth = 16;
-    final_depth = 24;
+    final_depth = 20;
     long long strt = tim();
     search_result result;
     cerr << "initializing" << endl;
