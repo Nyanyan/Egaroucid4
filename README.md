@@ -1,6 +1,6 @@
 # Egaroucid 4 - Othello AI
 
-
+**This project is archived, the latest version is here: https://github.com/Nyanyan/Egaroucid**
 
 ## Abstract
 
@@ -11,8 +11,6 @@ Egaroucid 4 is an Othello AI.
 There are former versions:
 
 https://github.com/Nyanyan/Reversi
-
-https://github.com/Nyanyan/Egaroucid
 
 https://github.com/Nyanyan/Egaroucid3
 
